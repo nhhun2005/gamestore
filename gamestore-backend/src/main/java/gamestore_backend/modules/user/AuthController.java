@@ -28,7 +28,7 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    public record RegisterRequest(String username, String email, String password, String role) {
+    public record RegisterRequest(String username, String email, String password) {
     }
 
     public record LoginRequest(String account, String password) {
@@ -54,14 +54,6 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Email đã được sử dụng."));
         }
 
-        Role assignedRole = Role.USER;
-        if (req.role() != null) {
-            try {
-                assignedRole = Role.valueOf(req.role().toUpperCase());
-            } catch (IllegalArgumentException ignored) {
-            }
-        }
-
         // Băm mật khẩu bằng BCrypt
         String hashedPassword = passwordEncoder.encode(req.password());
 
@@ -69,7 +61,7 @@ public class AuthController {
                 req.username().trim(),
                 req.email().trim(),
                 hashedPassword,
-                assignedRole);
+                Role.USER);
         userRepository.save(newUser);
 
         String token = jwtService.generateToken(newUser);

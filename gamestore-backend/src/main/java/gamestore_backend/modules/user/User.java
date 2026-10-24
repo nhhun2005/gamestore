@@ -32,6 +32,10 @@ public class User {
     @Column(nullable = false)
     private Role role = Role.USER;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.VERIFIED; // Hoặc UserStatus.VERIFIED
+
     public User() {
     }
 
@@ -81,5 +85,13 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public UserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(UserStatus status) {
+        this.status = status;
     }
 }

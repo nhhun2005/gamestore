@@ -36,8 +36,8 @@ function Navbar({ user, activePage, onNavigate, onLogout }) {
               </li>
             )}
 
-            {/* Chỉ hiện khi là ADMIN */}
-            {user?.role === "ADMIN" && (
+            {/* Chỉ hiện khi là ADMINISTRATOR */}
+            {user?.role === "ADMINISTRATOR" && (
               <li
                 className={`steam-nav-item role-special ${
                   activePage === "manage-users" ? "active" : ""

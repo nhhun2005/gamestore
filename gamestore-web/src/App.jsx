@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Navbar from "./components/Navbar/Navbar";
 import StorePage from "./pages/Store/StorePage";
 import LibraryPage from "./pages/Library/LibraryPage";
@@ -9,29 +9,33 @@ import ManageUsersPage from "./pages/ManageUsers/ManageUserPage";
 import { parseJwt } from "./utils/auth";
 import "./App.css";
 
-function App() {
-  const [activePage, setActivePage] = useState("store");
-  const [user, setUser] = useState(null);
+const TOKEN_KEY = "steam_jwt_token";
 
-  useEffect(() => {
-    const token = localStorage.getItem("steam_jwt_token");
-    if (token) {
-      const payload = parseJwt(token);
-      if (payload && payload.exp * 1000 > Date.now()) {
-        setUser({
-          id: payload.id,
-          username: payload.sub,
-          email: payload.email,
-          role: payload.role || "USER",
-        });
-      } else {
-        localStorage.removeItem("steam_jwt_token");
-      }
-    }
-  }, []);
+function getInitialUser() {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+
+  const payload = parseJwt(token);
+  if (payload && payload.exp * 1000 > Date.now()) {
+    return {
+      id: payload.id,
+      username: payload.sub,
+      email: payload.email,
+      role: payload.role || "USER",
+    };
+  }
+  localStorage.removeItem(TOKEN_KEY);
+  return null;
+}
+
+function App() {
+  const [user, setUser] = useState(getInitialUser);
+  const [activePage, setActivePage] = useState(() =>
+    getInitialUser() ? "store" : "login",
+  );
 
   const handleAuthSuccess = (data) => {
-    localStorage.setItem("steam_jwt_token", data.token);
+    localStorage.setItem(TOKEN_KEY, data.token);
     setUser({
       id: data.id,
       username: data.username,
@@ -42,37 +46,35 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("steam_jwt_token");
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     setActivePage("login");
   };
 
+  // Chưa đăng nhập: chỉ có trang đăng nhập / đăng ký, không có Navbar
+  if (!user) {
+    return activePage === "register" ? (
+      <RegisterPage
+        onAuthSuccess={handleAuthSuccess}
+        onNavigate={setActivePage}
+      />
+    ) : (
+      <LoginPage onAuthSuccess={handleAuthSuccess} onNavigate={setActivePage} />
+    );
+  }
+
   const renderPage = () => {
     switch (activePage) {
-      case "login":
-        return (
-          <LoginPage
-            onAuthSuccess={handleAuthSuccess}
-            onNavigate={setActivePage}
-          />
-        );
-      case "register":
-        return (
-          <RegisterPage
-            onAuthSuccess={handleAuthSuccess}
-            onNavigate={setActivePage}
-          />
-        );
       case "library":
         return <LibraryPage user={user} onNavigate={setActivePage} />;
       case "manage-games":
-        return user?.role === "DEVELOPER" ? (
+        return user.role === "DEVELOPER" ? (
           <DevManageGamesPage />
         ) : (
           <StorePage user={user} />
         );
       case "manage-users":
-        return user?.role === "ADMIN" ? (
+        return user.role === "ADMINISTRATOR" ? (
           <ManageUsersPage user={user} />
         ) : (
           <StorePage user={user} />

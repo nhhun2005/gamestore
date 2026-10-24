@@ -8,7 +8,6 @@ function RegisterPage({ onAuthSuccess, onNavigate }) {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "USER",
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,7 +30,6 @@ function RegisterPage({ onAuthSuccess, onNavigate }) {
           username: form.username,
           email: form.email,
           password: form.password,
-          role: form.role,
         }),
       });
       const data = await res.json();
@@ -82,25 +80,6 @@ function RegisterPage({ onAuthSuccess, onNavigate }) {
               placeholder="name@example.com"
               required
             />
-          </div>
-
-          <div className="steam-form-group">
-            <label className="steam-form-label">
-              Chọn vai trò (Dùng để test phân quyền Navbar)
-            </label>
-            <select
-              className="steam-select"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-            >
-              <option value="USER">Người dùng thường (Store + Thư viện)</option>
-              <option value="DEVELOPER">
-                Nhà phát triển - Developer (+ Quản lý Game)
-              </option>
-              <option value="ADMIN">
-                Quản trị viên - Admin (+ Quản lý Người dùng)
-              </option>
-            </select>
           </div>
 
           <div className="steam-form-group">

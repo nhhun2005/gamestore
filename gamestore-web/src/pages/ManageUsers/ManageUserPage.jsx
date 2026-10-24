@@ -22,7 +22,7 @@ function ManageUsersPage({ user }) {
             <td>{user?.username}</td>
             <td>{user?.email}</td>
             <td>
-              <span className="role-tag ADMIN">ADMIN</span>
+              <span className="role-tag ADMINISTRATOR">ADMINISTRATOR</span>
             </td>
             <td>Đang hoạt động</td>
           </tr>
