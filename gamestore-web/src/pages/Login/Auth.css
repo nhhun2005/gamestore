@@ -1,0 +1,112 @@
+.steam-auth-wrapper {
+  flex: 1;
+  background: radial-gradient(circle at 30% 20%, rgba(26, 159, 255, 0.14), transparent 50%),
+              linear-gradient(180deg, #1b2838 0%, #111822 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.steam-auth-card {
+  background-color: #181a21;
+  width: 100%;
+  max-width: 640px;
+  border-radius: 4px;
+  padding: 36px 40px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+}
+
+.steam-auth-title {
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+
+.steam-form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.steam-form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #b8b6b4;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.steam-form-label.highlight {
+  color: #1999ff;
+}
+
+.steam-input,
+.steam-select {
+  width: 100%;
+  background-color: #32353c;
+  border: 1px solid #26282d;
+  border-radius: 3px;
+  padding: 12px 14px;
+  color: #ffffff;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.steam-input:focus,
+.steam-select:focus {
+  background-color: #393c44;
+  border-color: #1999ff;
+}
+
+.steam-submit-btn {
+  width: 260px;
+  max-width: 100%;
+  display: block;
+  margin: 28px auto 0;
+  padding: 13px 20px;
+  background: linear-gradient(90deg, #06bfff 0%, #2d73ff 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+.steam-submit-btn:hover {
+  filter: brightness(1.12);
+}
+
+.steam-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.steam-error-msg {
+  background-color: rgba(180, 40, 40, 0.25);
+  border: 1px solid #d94141;
+  color: #ff9999;
+  padding: 10px 14px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.steam-auth-footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #2a2d35;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #b8b6b4;
+}
