@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: gamestore-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gamestore}
+    username: ${DB_USERNAME:gamestore}
+    password: ${DB_PASSWORD}
+  flyway:
+    enabled: true
+    default-schema: public
+    schemas: public
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    clean-disabled: true
+    validate-on-migrate: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: public
