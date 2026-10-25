@@ -1,61 +1,51 @@
+import { NavLink } from "react-router-dom";
 import "./Navbar.css";
-
-function Navbar({ user, activePage, onNavigate, onLogout }) {
+function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
+  const pages = [
+    ["store", "Cửa hàng (Store)"],
+    ["library", "Thư viện (Library)"],
+    ["wallet", "Ví"],
+    ["transactions", "Giao dịch"],
+  ];
+  if (user?.role === "DEVELOPER")
+    pages.push(
+      ["manage-games", "Quản lý Game"],
+      ["developer/revenue", "Doanh thu"],
+    );
+  if (user?.role === "ADMINISTRATOR")
+    pages.push(
+      ["manage-users", "Quản lý người dùng"],
+      ["admin/revenue", "Doanh thu"],
+    );
   return (
     <header className="steam-navbar">
       <div className="steam-navbar-container">
         <div className="steam-brand-and-links">
-          <div className="steam-logo" onClick={() => onNavigate("store")}>
-            <div className="steam-logo-badge">🎮</div>
+          <button className="steam-logo" onClick={() => onNavigate("store")}>
+            <span className="steam-logo-badge" aria-hidden="true">
+              🎮
+            </span>
             <span>STEAM STORE</span>
-          </div>
-
-          <ul className="steam-nav-links">
-            <li
-              className={`steam-nav-item ${activePage === "store" ? "active" : ""}`}
-              onClick={() => onNavigate("store")}
-            >
-              Cửa hàng (Store)
-            </li>
-            <li
-              className={`steam-nav-item ${activePage === "library" ? "active" : ""}`}
-              onClick={() => onNavigate("library")}
-            >
-              Thư viện (Library)
-            </li>
-
-            {/* Chỉ hiện khi là DEVELOPER */}
-            {user?.role === "DEVELOPER" && (
-              <li
-                className={`steam-nav-item role-special ${
-                  activePage === "manage-games" ? "active" : ""
-                }`}
-                onClick={() => onNavigate("manage-games")}
+          </button>
+          <nav aria-label="Điều hướng chính" className="steam-nav-links">
+            {pages.map(([page, label]) => (
+              <NavLink
+                key={page}
+                to={`/${page}`}
+                className={`steam-nav-item ${activePage === page ? "active" : ""} ${page.startsWith("manage-") ? "role-special" : ""}`}
               >
-                Quản lý Game
-              </li>
-            )}
-
-            {/* Chỉ hiện khi là ADMINISTRATOR */}
-            {user?.role === "ADMINISTRATOR" && (
-              <li
-                className={`steam-nav-item role-special ${
-                  activePage === "manage-users" ? "active" : ""
-                }`}
-                onClick={() => onNavigate("manage-users")}
-              >
-                Quản lý người dùng
-              </li>
-            )}
-          </ul>
+                {label}
+              </NavLink>
+            ))}
+          </nav>
         </div>
-
         <div className="steam-user-actions">
           {user ? (
             <>
               <div className="user-info-box">
                 <span className="user-name">{user.username}</span>
                 <span className={`role-tag ${user.role}`}>{user.role}</span>
+                {balance && <NavLink to="/wallet">{balance}</NavLink>}
               </div>
               <button className="steam-auth-btn" onClick={onLogout}>
                 Đăng xuất
@@ -82,5 +72,4 @@ function Navbar({ user, activePage, onNavigate, onLogout }) {
     </header>
   );
 }
-
 export default Navbar;
