@@ -102,10 +102,10 @@ class DatabaseRulesTests {
                 () -> jdbc.update("UPDATE game_submissions SET status='ACCEPTED' WHERE game_id=?", game));
     }
 
-    @Test void rejectsRemovingLastSubmissionAtCommit() {
+    @Test void draftMayExistWithoutSubmission() {
         jdbc.update("DELETE FROM game_submissions WHERE game_id=?", game);
-        assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
-                () -> jdbc.execute("SET CONSTRAINTS ALL IMMEDIATE"));
+        assertDoesNotThrow(() -> jdbc.execute("SET CONSTRAINTS ALL IMMEDIATE"));
+        assertEquals(0, jdbc.queryForObject("SELECT count(*) FROM game_submissions WHERE game_id=?", Integer.class, game));
     }
 
     @Test void usernameIsUniqueIgnoringCase() {

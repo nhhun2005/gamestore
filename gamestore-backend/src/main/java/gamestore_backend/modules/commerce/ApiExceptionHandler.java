@@ -19,4 +19,8 @@ public class ApiExceptionHandler {
     ResponseEntity<?> invalid(Exception error) { return ResponseEntity.badRequest().body(Map.of("message", "Dữ liệu không hợp lệ. Kiểm tra số tiền, điểm đánh giá, mã yêu cầu hoặc bộ lọc.")); }
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<?> conflict(DataIntegrityViolationException error) { return ResponseEntity.status(409).body(Map.of("message", "Dữ liệu đã tồn tại hoặc đã thay đổi. Vui lòng tải lại và thử lại.")); }
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<?> uploadTooLarge(Exception error) { return ResponseEntity.badRequest().body(Map.of("message", "Ảnh tối đa 5 MB.")); }
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    ResponseEntity<?> missingImage(Exception error) { return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng chọn ảnh tải lên.")); }
 }

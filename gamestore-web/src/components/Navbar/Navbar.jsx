@@ -9,7 +9,7 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
   ];
   if (user?.role === "DEVELOPER")
     pages.push(
-      ["manage-games", "Quản lý Game"],
+      ["manage-games", "Quản lý trò chơi"],
       ["developer/revenue", "Doanh thu"],
     );
   if (user?.role === "ADMINISTRATOR")

@@ -7,10 +7,8 @@ export default function ManageGamesPage() {
     <nav className="genre-tabs" aria-label="Quản lý trò chơi">
       <NavLink to="/admin/games" end>Quản lý trò chơi</NavLink>
       <NavLink to="/admin/games/genres">Quản lý thể loại trò chơi</NavLink>
+      <NavLink to="/admin/games/submissions">Đơn đăng tải trò chơi</NavLink>
     </nav>
     <Outlet />
   </main>;
-}
-export function GamesPlaceholder() {
-  return <section className="commerce-panel"><h2>Quản lý trò chơi</h2><p>Chức năng đang được phát triển.</p></section>;
 }

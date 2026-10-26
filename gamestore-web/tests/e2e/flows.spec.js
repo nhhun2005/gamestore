@@ -114,7 +114,7 @@ test("all seven use cases: consistent wallet, library, reviews, history and scop
   ).toHaveCount(0);
   await page.goto("/manage-games");
   await expect(
-    page.getByRole("heading", { name: /Quản lý Game/ }),
+    page.getByRole("heading", { name: "Quản lý trò chơi", level: 1 }),
   ).toBeVisible();
   await page.goto("/admin/revenue");
   await expect(
@@ -322,7 +322,7 @@ test("existing registration, role navigation, expired and invalid login response
   await expect(
     page.getByRole("heading", { name: /Quản lý Người dùng/ }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Quản lý Game" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Quản lý trò chơi", exact: true })).toHaveCount(1);
   await page.evaluate(
     (token) => localStorage.setItem("steam_jwt_token", token),
     authData("USER", -1).token,

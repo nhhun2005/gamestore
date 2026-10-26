@@ -61,7 +61,12 @@ public class GenreService {
         admin(user); lock(); find(id);
         if (!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM games WHERE id=?)", Boolean.class, game)))
             throw new CommerceException(HttpStatus.NOT_FOUND, "Không tìm thấy trò chơi.");
-        if (attach) jdbc.update("INSERT INTO game_genres(game_id,genre_id) VALUES (?,?) ON CONFLICT DO NOTHING", game, id);
-        else jdbc.update("DELETE FROM game_genres WHERE game_id=? AND genre_id=?", game, id);
+        jdbc.query("SELECT id FROM games WHERE id=? FOR UPDATE", (org.springframework.jdbc.core.RowCallbackHandler) r -> {}, game);
+        boolean linked = Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM game_genres WHERE game_id=? AND genre_id=?)", Boolean.class, game, id));
+        if (!attach && linked && jdbc.queryForObject("SELECT count(*) FROM game_genres WHERE game_id=?", Long.class, game) <= 1)
+            throw new CommerceException(HttpStatus.CONFLICT, "Trò chơi phải giữ ít nhất 1 thể loại. Hãy thêm thể loại thay thế trước khi gỡ.");
+        int changed = attach ? jdbc.update("INSERT INTO game_genres(game_id,genre_id) VALUES (?,?) ON CONFLICT DO NOTHING", game, id)
+            : jdbc.update("DELETE FROM game_genres WHERE game_id=? AND genre_id=?", game, id);
+        if (changed > 0) gamestore_backend.modules.catalog.CatalogApprovalRules.invalidateAfterEdit(jdbc, game);
     }
 }

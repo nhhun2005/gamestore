@@ -9,6 +9,7 @@ async function setup(page, role = "ADMINISTRATOR") {
   const games = [{ id: "game", title: "Trò chơi thử nghiệm", status: "HIDDEN", genre_ids: ["action", "rpg"] }];
   let sequence = 0;
   await page.route("**/api/commerce/state", route => route.fulfill({ json: { current_user: user, users: [], games: [], promotions: [], transactions: [], game_bought: [], reviews: [], capabilities: {} } }));
+  await page.route("**/api/catalog/manage", route => route.fulfill({ json: { games: [], genres: [], developers: [] } }));
   await page.route("**/api/admin/genres**", async route => {
     const request = route.request(), path = new URL(request.url()).pathname.replace("/api/admin/genres", ""), method = request.method();
     const parts = path.split("/").filter(Boolean);
@@ -35,10 +36,10 @@ async function setup(page, role = "ADMINISTRATOR") {
   });
 }
 
-test("admin placeholder, genre CRUD and multiple game assignments", async ({ page }) => {
+test("admin catalog, genre CRUD and multiple game assignments", async ({ page }) => {
   await setup(page);
   await page.goto("/admin/games");
-  await expect(page.getByText("Chức năng đang được phát triển.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Danh sách trò chơi" })).toBeVisible();
   await page.getByRole("link", { name: "Quản lý thể loại trò chơi", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Danh sách thể loại (2)" })).toBeVisible();
   await page.getByRole("button", { name: "Xóa Hành động", exact: true }).click();

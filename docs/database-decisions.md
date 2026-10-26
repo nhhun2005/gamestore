@@ -23,11 +23,11 @@ Mỗi user có đúng một role: `USER`, `ADMINISTRATOR`, `DEVELOPER`. Trạng 
 
 - Game có `developer_id` trỏ tới chủ game, khác với user mua game trong `game_bought`.
 - Game có trạng thái `HIDDEN`, `AVAILABLE`, mặc định `HIDDEN`. Xóa game về mặt nghiệp vụ là chuyển sang `HIDDEN`.
-- Một game có **1..n submission**, mỗi submission thuộc đúng một game. Tạo game và submission đầu tiên trong **cùng một transaction SQL**; constraint trì hoãn tới cuối transaction kiểm tra game có ít nhất một submission. Không dùng hai lệnh autocommit riêng.
+- Từ migration V4, game có **0..n submission**: tạo bản nháp trước, gửi đơn đăng tải bằng thao tác riêng. Quy tắc cũ bắt buộc game có submission ngay khi tạo đã được gỡ theo luồng quản lý trò chơi mới.
 - `submitted_by` bắt buộc; `reviewed_by` có thể NULL khi `PENDING`, bắt buộc khi `ACCEPTED` hoặc `REJECTED`.
 - Một game được gửi duyệt nhiều lần; không có unique constraint trên `game_submissions.game_id`.
-- Service chịu trách nhiệm kiểm tra người gửi là chủ game/developer, người duyệt là admin và quyết định khi nào chuyển game sang `AVAILABLE`. Duyệt submission không tự đổi trạng thái game.
-- `game_genres` biểu diễn quan hệ nhiều–nhiều. Sơ đồ yêu cầu game có ít nhất một genre; việc chọn đủ genre khi hoàn thiện game thuộc service, chưa có constraint kiểm tra số lượng genre tối thiểu.
+- Service kiểm tra chủ sở hữu/developer và quyền admin hiện tại. Duyệt `ACCEPTED` chuyển game sang `AVAILABLE` trong cùng transaction; từ chối giữ game `HIDDEN`. Khi sửa nội dung game thuộc developer, game chuyển `HIDDEN`, các đơn `ACCEPTED` chuyển `REJECTED` với reason **Trò chơi đã bị chỉnh sửa**, theo yêu cầu người dùng. Chỉ ẩn/bật lại không sửa nội dung giữ kết quả duyệt. Không dùng field revision; V5 gỡ hai cột theo dõi đã được thêm ở V4.
+- `game_genres` biểu diễn quan hệ nhiều–nhiều. API tạo/sửa game bắt buộc ít nhất một genre. Gỡ thể loại cuối cùng bị chặn; thay đổi liên kết genre của game thuộc developer cũng ẩn game và từ chối đơn đã duyệt. Chưa có constraint SQL kiểm tra số lượng tối thiểu; API gửi đơn/phát hành kiểm tra lại dữ liệu legacy.
 
 ## Giao dịch và quyền sở hữu
 
@@ -64,15 +64,18 @@ Mỗi user có đúng một role: `USER`, `ADMINISTRATOR`, `DEVELOPER`. Trạng 
 | Migration | Nội dung |
 | --- | --- |
 | `V1__create_gamestore_schema.sql` | 12 bảng nghiệp vụ, PK/FK, CHECK và index |
-| `V2__enforce_purchase_and_review_rules.sql` | Cấp quyền mua game, bảo vệ giao dịch thành công, rating trung bình, kiểm tra submission tối thiểu |
+| `V2__enforce_purchase_and_review_rules.sql` | Cấp quyền mua game, bảo vệ giao dịch thành công, rating trung bình, kiểm tra submission tối thiểu (gỡ bởi V4) |
+| `V3__transaction_idempotency.sql` | Mã yêu cầu chống giao dịch lặp |
+| `V4__game_drafts_and_submission_revisions.sql` | Tách bản nháp và gửi đơn, revision nội dung, thời gian gửi/xét duyệt |
+| `V5__remove_game_revision_tracking.sql` | Gỡ hai cột revision và index phụ thuộc theo yêu cầu người dùng; không sửa V4 đã áp dụng |
 
 File nằm trong `gamestore-backend/src/main/resources/db/migration`. Khởi động backend sẽ validate lịch sử và áp dụng migration chưa chạy. `baseline-on-migrate=false`, `clean-disabled=true`; không tự baseline schema đã có bảng.
 
-Không sửa migration đã áp dụng; tạo `V3__...sql` cho thay đổi tiếp theo. Flyway ghi phiên bản/checksum trong `public.flyway_schema_history`; xem [tài liệu migrations](https://documentation.red-gate.com/flyway/flyway-concepts/migrations).
+Không sửa migration đã áp dụng; thêm phiên bản migration mới cho thay đổi tiếp theo. Flyway ghi phiên bản/checksum trong `public.flyway_schema_history`; xem [tài liệu migrations](https://documentation.red-gate.com/flyway/flyway-concepts/migrations).
 
 Chạy test trên database PostgreSQL **riêng cho test** bằng cách đặt `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, rồi chạy `bash mvnw test` trong `gamestore-backend`. Test khởi tạo Spring context nên cũng chạy Flyway. Test nghiệp vụ rollback dữ liệu fixture; không dùng database production để chạy test.
 
-Không có `ON DELETE CASCADE`. Chức năng xóa user/game chỉ cập nhật status. Khóa ngoại bảo vệ quan hệ, nhưng không phải cơ chế cấm mọi câu SQL DELETE của tài khoản quản trị; giới hạn quyền và luồng xóa thuộc ứng dụng/vận hành.
+Không có `ON DELETE CASCADE`. Xóa user và thao tác ẩn game cập nhật status. Admin có API xóa game hoàn toàn nếu không có lịch sử giao dịch/quyền sở hữu/review; API xóa wishlist, liên kết genre và submission trong cùng transaction trước khi xóa game. Khóa ngoại bảo vệ quan hệ; giới hạn quyền và luồng xóa thuộc ứng dụng/vận hành.
 
 ## Kết quả kiểm chứng ngày 24/10/2026
 

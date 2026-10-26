@@ -16,3 +16,28 @@
 .genre-select span { font-size: .85rem; flex-shrink: 0; }
 .genre-actions { display: flex; gap: 10px; margin-top: 12px; }
 @media (max-width: 760px) { .genre-columns { grid-template-columns: 1fr; } }
+.genre-field select { box-sizing: border-box; width: 100%; padding: 10px 12px; font: inherit; color: #e4edf4; background: #101c29; border: 1px solid #48627a; border-radius: 4px; }
+.game-management-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.managed-game { min-width: 0; overflow-wrap: anywhere; }
+.managed-game .game-art { aspect-ratio: 16 / 9; height: auto; min-height: 160px; margin-bottom: 18px; }
+.managed-game .genre-actions { flex-wrap: wrap; }
+.managed-game small, .game-history small { display: block; color: #a9bfce; }
+.game-status { color: #8bd2ff; }
+.game-status.AVAILABLE { color: #b1d978; }
+.game-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin-bottom: 20px; }
+.game-filters .genre-field { flex: 1; min-width: min(100%, 200px); margin: 0; }
+.game-form-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.game-genre-picker { border: 1px solid #48627a; border-radius: 4px; padding: 14px; margin: 16px 0; }
+.game-genre-picker > div { display: flex; gap: 14px; flex-wrap: wrap; }
+.game-genre-picker label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.game-genre-picker input { width: 18px; height: 18px; accent-color: #66c0f4; }
+.game-cover-preview { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 4px; }
+.game-image-cropper { padding: 16px; margin: 16px 0; background: #101c29; border: 1px solid #48627a; border-radius: 4px; }
+.game-crop-canvas { display: block; width: min(100%, 360px); height: auto; aspect-ratio: 1; margin: 12px auto; background: #172536; border: 1px solid #66c0f4; touch-action: none; cursor: grab; }
+.game-crop-canvas:active { cursor: grabbing; }
+.game-image-cropper input[type="range"] { padding: 0; accent-color: #66c0f4; }
+.game-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.game-history section { border-top: 1px solid #48627a; padding: 14px 0; }
+.submission-list { padding: 0; list-style: none; display: grid; gap: 16px; }
+.submission-list li { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .game-form-columns { grid-template-columns: 1fr; gap: 0; } }

@@ -16,7 +16,9 @@ import LoginPage from "./pages/Login/LoginPage";
 import RegisterPage from "./pages/Register/RegisterPage";
 import DevManageGamesPage from "./pages/DevManageGames/DevManageGamesPage";
 import ManageUsersPage from "./pages/ManageUsers/ManageUsersPage";
-import ManageGamesPage, { GamesPlaceholder } from "./pages/ManageGames/ManageGamesPage";
+import ManageGamesPage from "./pages/ManageGames/ManageGamesPage";
+import GameCatalogPage from "./pages/ManageGames/GameCatalogPage";
+import GameSubmissionsPage from "./pages/ManageGames/GameSubmissionsPage";
 import ManageGenresPage from "./pages/ManageGames/ManageGenresPage";
 import WalletPage from "./pages/Wallet/WalletPage";
 import TransactionsPage from "./pages/Transactions/TransactionsPage";
@@ -272,13 +274,17 @@ function Application() {
           <Route
             path="/manage-games"
             element={protectedPage(<DevManageGamesPage />, "DEVELOPER", false)}
-          />
+          >
+            <Route index element={<GameCatalogPage />} />
+            <Route path="new" element={<GameCatalogPage createOnly />} />
+          </Route>
           <Route
             path="/admin/games"
             element={protectedPage(<ManageGamesPage />, "ADMINISTRATOR")}
           >
-            <Route index element={<GamesPlaceholder />} />
+            <Route index element={<GameCatalogPage />} />
             <Route path="genres" element={<ManageGenresPage />} />
+            <Route path="submissions" element={<GameSubmissionsPage />} />
           </Route>
           <Route
             path="/manage-users"
