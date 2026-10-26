@@ -15,6 +15,7 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
   if (user?.role === "ADMINISTRATOR")
     pages.push(
       ["manage-users", "Quản lý người dùng"],
+      ["admin/games", "Quản lý trò chơi"],
       ["admin/revenue", "Doanh thu"],
     );
   return (

@@ -1,0 +1,18 @@
+.genre-tabs { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0 28px; }
+.genre-tabs a { padding: 12px 18px; color: #c7d5e0; border: 1px solid #456075; border-radius: 4px; text-decoration: none; }
+.genre-tabs a.active { background: #234c66; color: #9cdbff; border-color: #66c0f4; }
+.genre-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.genre-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; align-items: start; }
+.genre-columns > section { min-width: 0; }
+.genre-field { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.genre-field input, .genre-field textarea { box-sizing: border-box; width: 100%; font: inherit; padding: 10px 12px; color: #e4edf4; background: #101c29; border: 1px solid #48627a; border-radius: 4px; }
+.genre-field textarea { resize: vertical; }
+.genre-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.genre-list li { border: 1px solid #385268; border-radius: 4px; padding: 14px; overflow-wrap: anywhere; }
+.genre-list li.selected { border-color: #66c0f4; background: #1c3448; }
+.genre-list li p { white-space: pre-wrap; color: #b8cbd9; }
+.genre-list small { display: block; margin-top: 6px; color: #b8cbd9; }
+.genre-select { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 4px 0; background: transparent; color: inherit; border: 0; cursor: pointer; text-align: left; font: inherit; }
+.genre-select span { font-size: .85rem; flex-shrink: 0; }
+.genre-actions { display: flex; gap: 10px; margin-top: 12px; }
+@media (max-width: 760px) { .genre-columns { grid-template-columns: 1fr; } }

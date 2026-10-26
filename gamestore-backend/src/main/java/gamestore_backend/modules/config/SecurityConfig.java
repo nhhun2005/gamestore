@@ -35,7 +35,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, error) -> {
+                .exceptionHandling(errors -> errors.accessDeniedHandler((request, response, error) -> {
+                    response.setStatus(403);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"message\":\"Bạn không có quyền thực hiện thao tác này.\"}");
+                }).authenticationEntryPoint((request, response, error) -> {
                     response.setStatus(401);
                     response.setContentType("application/json;charset=UTF-8");
                     response.getWriter().write("{\"message\":\"Vui lòng đăng nhập.\"}");
