@@ -91,9 +91,14 @@ public class AuthController {
                     .body(Map.of("message", "Vui lòng kiểm tra lại mật khẩu và tên tài khoản rồi thử lại."));
         }
 
-        if (user.getStatus() != UserStatus.VERIFIED) {
+        // Kiểm tra trạng thái tài khoản
+        if (user.getStatus() == UserStatus.BANNED) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Tài khoản chưa được xác minh hoặc đã bị khóa."));
+                    .body(Map.of("message", "Tài khoản của bạn đã bị khóa (BANNED)."));
+        }
+        if (user.getStatus() == UserStatus.PENDING) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Tài khoản của bạn đang chờ duyệt (PENDING)."));
         }
 
         String token = jwtService.generateToken(user);
