@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useCommerce } from "../../components/commerce/context";
 import { useOperation } from "../../components/commerce/useOperation";
 import {
@@ -12,12 +12,11 @@ export default function CheckoutDialog({ game, close }) {
   const { state, user, service } = useCommerce();
   const [success, setSuccess] = useState(false);
   const operation = useOperation();
+  const requestKey = useRef(crypto.randomUUID());
   const account = state.users.find((u) => u.id === user.id);
-  const owned =
-    import.meta.env.DEV &&
-    state.game_bought.some(
-      (p) => p.game_id === game.id && p.user_id === user.id,
-    );
+  const owned = state.game_bought.some(
+    (p) => p.game_id === game.id && p.user_id === user.id,
+  );
   const price = priceOf(game, state.promotions);
   const insufficient = cents(account?.balance || "0") < cents(price.final);
   return (
@@ -30,11 +29,12 @@ export default function CheckoutDialog({ game, close }) {
       <p>{game.description}</p>
       <p>Giá gốc: {money(price.original)}</p>
       <PriceDisplay game={game} promotions={state.promotions} />
-      {import.meta.env.DEV && (
+      {
         <p>
-          Số dư ví mô phỏng: <strong>{money(account?.balance || "0")}</strong>
+          Số dư ví{user.source === "demo" ? " mô phỏng" : ""}:{" "}
+          <strong>{money(account?.balance || "0")}</strong>
         </p>
-      )}
+      }
       {owned ? (
         <>
           <p className="positive" role="status">
@@ -48,11 +48,6 @@ export default function CheckoutDialog({ game, close }) {
             Mở thư viện
           </Link>
         </>
-      ) : !import.meta.env.DEV ? (
-        <p>
-          API mua game chưa được tích hợp. Phiên đăng nhập thật của bạn đang
-          hoạt động; không thực hiện thanh toán mô phỏng trong production.
-        </p>
       ) : game.status !== "AVAILABLE" ? (
         <p className="commerce-error">Trò chơi hiện chưa mở bán.</p>
       ) : insufficient ? (
@@ -63,20 +58,24 @@ export default function CheckoutDialog({ game, close }) {
             to="/wallet"
             onClick={close}
           >
-            Nạp tiền Demo
+            {user.source === "demo" ? "Nạp tiền Demo" : "Mở ví"}
           </Link>
         </>
       ) : (
         <>
           <p className="commerce-note">
-            DEMO · Một game mỗi giao dịch. Không phát sinh thanh toán thật.
+            {user.source === "demo"
+              ? "DEMO · Không phát sinh thanh toán thật."
+              : "Trừ số dư trong ví của bạn."}{" "}
+            Một game mỗi giao dịch.
           </p>
           <button
             className="commerce-button primary"
             disabled={operation.busy}
             onClick={() =>
               operation.run(
-                () => service.purchase(game.id),
+                () =>
+                  service.purchase(game.id, requestKey.current, price.final),
                 () => setSuccess(true),
               )
             }

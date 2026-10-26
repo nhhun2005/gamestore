@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import {
   BrowserRouter,
   Link,
@@ -19,7 +20,7 @@ import WalletPage from "./pages/Wallet/WalletPage";
 import TransactionsPage from "./pages/Transactions/TransactionsPage";
 import RevenuePage from "./pages/Revenue/RevenuePage";
 import { session, demoUsers } from "./services/session";
-import { commerceService } from "./services/commerceService";
+import { commerceGateway as commerceService } from "./services/commerceGateway";
 import { CommerceContext } from "./components/commerce/context";
 import { Modal } from "./components/commerce/CommerceUI";
 import { useOperation } from "./components/commerce/useOperation";
@@ -44,13 +45,18 @@ function Application() {
   const [accountError, setAccountError] = useState("");
   const [reset, setReset] = useState(false);
   const operation = useOperation();
+  const [explicitLogout, setExplicitLogout] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
-    if (user && import.meta.env.DEV)
-      commerceService
-        .prepareAccount()
-        .catch((error) => setAccountError(error.message));
+    let active = true;
+    if (user)
+      commerceService.prepareAccount().catch((error) => {
+        if (active) setAccountError(error.message);
+      });
+    return () => {
+      active = false;
+    };
   }, [user]);
   useEffect(() => {
     if (!user?.expiresAt) return;
@@ -65,21 +71,33 @@ function Application() {
   const navigatePage = (page) =>
     navigate(`/${page}`, { state: location.state });
   const authSuccess = (data) => {
+    const destination = explicitLogout
+      ? "/store"
+      : returnPath(location.state?.from);
     session.login(data);
+    setExplicitLogout(false);
     setAccountError("");
     setNotice("");
-    navigate(returnPath(location.state?.from), { replace: true });
+    navigate(destination, { replace: true });
   };
   const logout = () => {
+    // Publish the redirect intent before the external session store notifies guards.
+    flushSync(() => setExplicitLogout(true));
     session.logout();
     setNotice("");
     setReset(false);
-    navigate("/login", { replace: true });
+    navigate("/login", { replace: true, state: { from: "/store" } });
   };
-  function protectedPage(element, role, commerce = true) {
+  function protectedPage(element, role) {
     if (!user)
       return (
-        <Navigate to="/login" state={{ from: location.pathname }} replace />
+        <Navigate
+          to="/login"
+          state={{
+            from: explicitLogout ? "/store" : location.pathname,
+          }}
+          replace
+        />
       );
     if (role && user.role !== role)
       return (
@@ -89,17 +107,7 @@ function Application() {
           <Link to="/store">Về cửa hàng</Link>
         </main>
       );
-    if (commerce && !import.meta.env.DEV)
-      return (
-        <main className="steam-main-content commerce-page">
-          <h1>Đang tích hợp API thương mại</h1>
-          <p>
-            Phiên đăng nhập thật của bạn đang hoạt động. Ví, thư viện và doanh
-            thu cần API backend; dữ liệu mô phỏng chỉ bật trên dev server.
-          </p>
-        </main>
-      );
-    if (commerce && accountError)
+    if (accountError)
       return (
         <main className="steam-main-content commerce-page">
           <p role="alert" className="commerce-error">
@@ -118,10 +126,10 @@ function Application() {
           </button>
         </main>
       );
-    if (import.meta.env.DEV && !state.users.some((u) => u.id === user.id))
+    if (!state.users.some((u) => u.id === user.id))
       return (
         <p className="commerce-loading" role="status">
-          Đang tải dữ liệu thương mại mô phỏng…
+          Đang tải dữ liệu tài khoản…
         </p>
       );
     return element;
@@ -198,20 +206,13 @@ function Application() {
           activePage={location.pathname.slice(1)}
           onNavigate={navigatePage}
           onLogout={logout}
-          balance={
-            import.meta.env.DEV ? money(account?.balance || "0") : undefined
-          }
+          balance={account ? money(account.balance) : undefined}
         />
       )}
-      {user && import.meta.env.DEV && (
+      {user?.source === "demo" && import.meta.env.DEV && (
         <div className="commerce-demo-bar">
           <div>
-            <span>
-              {user.source === "demo"
-                ? "DEMO"
-                : "TÀI KHOẢN THẬT · THƯƠNG MẠI MÔ PHỎNG"}{" "}
-              · Không có thanh toán thật
-            </span>
+            <span>DEMO · Không có thanh toán thật</span>
             <div>
               {user.source === "demo" && <Link to="/demo">Đổi danh tính</Link>}
               <button disabled={operation.busy} onClick={() => setReset(true)}>

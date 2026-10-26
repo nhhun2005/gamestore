@@ -1,0 +1,4 @@
+# Development funds only. Never represents bank/payment-provider verification.
+app:
+  commerce:
+    demo-topups-enabled: true

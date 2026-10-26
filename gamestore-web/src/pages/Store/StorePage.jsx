@@ -89,7 +89,10 @@ function StorePage({ user, games = FEATURED_GAMES, promotions = [] }) {
         game.title.toLowerCase().includes(search.toLowerCase()),
       ) && <p className="commerce-empty">Không tìm thấy trò chơi.</p>}
       {selected && (
-        <CheckoutDialog game={selected} close={() => setSelected(null)} />
+        <CheckoutDialog
+          game={games.find((game) => game.id === selected.id) || selected}
+          close={() => setSelected(null)}
+        />
       )}
     </main>
   );

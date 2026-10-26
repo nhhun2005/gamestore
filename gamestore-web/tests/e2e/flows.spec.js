@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createCommerceService } from "../../src/services/commerceService.js";
 
 const pixel = "Pixel Valley Farming";
 async function demo(page, name = "Huỳnh") {
@@ -205,7 +206,7 @@ function authData(role = "USER", seconds = 3600) {
     email: claims.email,
   };
 }
-async function interceptAuth(page, data, status = 200) {
+async function interceptAuth(page, data, status = 200, topups = true) {
   await page.route("http://localhost:8080/api/auth/**", (route) =>
     route.fulfill({
       status,
@@ -213,6 +214,55 @@ async function interceptAuth(page, data, status = 200) {
       headers: { "access-control-allow-origin": "*" },
     }),
   );
+  if (status !== 200) return;
+  const commerce = createCommerceService({
+    currentUser: () => ({
+      id: data.id,
+      username: data.username,
+      role: data.role,
+    }),
+    delay: 0,
+  });
+  await commerce.prepareAccount();
+  await page.route("http://localhost:8080/api/commerce/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    try {
+      let body;
+      if (path.endsWith("/state")) {
+        const snapshot = commerce.snapshot();
+        body = {
+          ...snapshot,
+          current_user: snapshot.users.find((u) => u.id === data.id),
+          users: snapshot.users.map(({ id, username, role }) => ({
+            id,
+            username,
+            role,
+          })),
+          capabilities: { demo_topups: topups },
+        };
+      } else if (path.endsWith("/wallet/demo-topups"))
+        body = await commerce.topUp(route.request().postDataJSON().amount);
+      else if (path.endsWith("/purchases"))
+        body = await commerce.purchase(route.request().postDataJSON().game_id);
+      else if (path.endsWith("/revenue")) body = await commerce.revenue();
+      else
+        return route.fulfill({
+          status: 404,
+          json: { message: "Test fixture endpoint missing" },
+        });
+      return route.fulfill({
+        status: 200,
+        json: body,
+        headers: { "access-control-allow-origin": "*" },
+      });
+    } catch (error) {
+      return route.fulfill({
+        status: 400,
+        json: { message: error.message },
+        headers: { "access-control-allow-origin": "*" },
+      });
+    }
+  });
 }
 async function login(page) {
   await page
@@ -298,15 +348,13 @@ test("production preserves real login and excludes demo and mock mutations", asy
   await expect(
     page.getByRole("heading", { name: "Trải nghiệm Demo" }),
   ).toHaveCount(0);
-  await interceptAuth(page, authData());
+  await interceptAuth(page, authData(), 200, false);
   await page.goto("http://127.0.0.1:4173/login");
   await login(page);
   await expect(page).toHaveURL(/store/);
   await page.getByRole("link", { name: "Ví", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Đang tích hợp API thương mại" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /100.000/ })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Tiếp tục nạp tiền" }),
-  ).toHaveCount(0);
+  ).toBeDisabled();
 });

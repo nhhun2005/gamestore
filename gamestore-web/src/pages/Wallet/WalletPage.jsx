@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCommerce } from "../../components/commerce/context";
 import { useOperation } from "../../components/commerce/useOperation";
@@ -13,6 +13,9 @@ export default function WalletPage() {
   const [amount, setAmount] = useState("500000");
   const [confirm, setConfirm] = useState(false);
   const operation = useOperation();
+  const requestKey = useRef("");
+  const topupsEnabled =
+    user.source === "demo" || state.capabilities?.demo_topups === true;
   let valid = false;
   try {
     const value = cents(amount);
@@ -31,7 +34,7 @@ export default function WalletPage() {
       </PageHeader>
       <div className="wallet-columns">
         <section className="commerce-panel wallet-balance">
-          <small>SỐ DƯ KHẢ DỤNG · DEMO</small>
+          <small>SỐ DƯ KHẢ DỤNG{user.source === "demo" ? " · DEMO" : ""}</small>
           <h2>{money(account.balance)}</h2>
           <p>Ví của {user.username}</p>
           <Link to="/transactions">Xem lịch sử giao dịch →</Link>
@@ -53,7 +56,10 @@ export default function WalletPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (valid) setConfirm(true);
+              if (valid && topupsEnabled) {
+                requestKey.current = crypto.randomUUID();
+                setConfirm(true);
+              }
             }}
           >
             <label htmlFor="deposit-amount">Số tiền tùy chỉnh (VND)</label>
@@ -76,14 +82,17 @@ export default function WalletPage() {
             </p>
             <button
               className="commerce-button primary"
-              disabled={!valid || operation.busy}
+              disabled={!valid || operation.busy || !topupsEnabled}
             >
               Tiếp tục nạp tiền
             </button>
           </form>
           <p className="commerce-note">
-            DEMO · Chỉ cập nhật dữ liệu mô phỏng, không kết nối ngân hàng hoặc
-            thu tiền thật.
+            {user.source === "demo"
+              ? "DEMO · Chỉ cập nhật dữ liệu mô phỏng, không kết nối ngân hàng hoặc thu tiền thật."
+              : topupsEnabled
+                ? "Nạp tiền thử nghiệm: số dư được ghi vào database, không thu tiền ngân hàng thật."
+                : "Chưa tích hợp cổng thanh toán. Nạp tiền thử nghiệm chỉ bật khi backend chạy profile local."}
           </p>
         </section>
       </div>
@@ -104,7 +113,10 @@ export default function WalletPage() {
           {...operation}
         >
           <p>
-            Thêm <strong>{money(amount)}</strong> vào ví mô phỏng?
+            Thêm <strong>{money(amount)}</strong>{" "}
+            {user.source === "demo"
+              ? "vào ví mô phỏng?"
+              : "vào số dư database bằng khoản nạp thử nghiệm?"}
           </p>
           <p>Không có khoản thanh toán thật nào được thực hiện.</p>
           <button
@@ -112,10 +124,14 @@ export default function WalletPage() {
             disabled={operation.busy}
             onClick={() =>
               operation.run(
-                () => service.topUp(amount),
+                () => service.topUp(amount, requestKey.current),
                 () => {
                   setConfirm(false);
-                  notify("Đã nạp tiền vào ví mô phỏng.");
+                  notify(
+                    user.source === "demo"
+                      ? "Đã nạp tiền vào ví mô phỏng."
+                      : "Đã ghi nhận khoản nạp thử nghiệm vào database.",
+                  );
                 },
               )
             }

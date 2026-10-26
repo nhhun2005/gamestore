@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://127.0.0.1:55439/commerce_test}
+    username: ${TEST_DB_USERNAME:commerce_test}
+    password: ${TEST_DB_PASSWORD:}
+app:
+  jwt:
+    secret: CommerceIntegrationTestSigningSecretAtLeast64CharactersLongForHS256_OnlyForTests
+    expiration-ms: 3600000
+  commerce:
+    demo-topups-enabled: true

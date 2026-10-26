@@ -2,7 +2,7 @@
 
 GameStore commerce flows (UC05, UC06, UC14–16, UC20–21) are implemented on top of
 the existing JWT login/logout. Run `npm ci` and `npm run dev`; use the existing
-Login form or the development-only Demo link. See [COMMERCE.md](COMMERCE.md) for
+Login form (real backend APIs) or the development-only Demo link. See [COMMERCE.md](COMMERCE.md) for
 architecture, routes, testing, data reset and backend integration instructions.
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.

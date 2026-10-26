@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@org.springframework.test.context.ActiveProfiles("test")
+@org.springframework.test.context.ContextConfiguration(initializers = TestDatabaseGuard.class)
 @Transactional
 class DatabaseRulesTests {
     @Autowired JdbcTemplate jdbc;

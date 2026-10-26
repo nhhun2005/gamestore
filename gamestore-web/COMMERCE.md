@@ -1,213 +1,113 @@
-# Huỳnh's frontend flows — rebuilt on current main
+# GameStore commerce — frontend and backend
 
-Base: a fresh clone of `0c24e0339294e3b73d33ef78b9291a4ca9d37465`
-(`Giao diện đăng nhập, đăng ký tạm, đã test`). The previous workspace is backed
-up at `D:\lienquantoiduan\Monthaynghi-backup-20261025-120820`.
+The seven Huỳnh use cases now use real Spring Boot APIs for JWT accounts. Wallet,
+purchases, ownership, reviews and revenue are persisted in PostgreSQL. The existing
+Login/Register contract and `steam_jwt_token` key remain in use.
 
-## Preparation and boundaries
+Start the backend in `gamestore-backend` with `mvnw.cmd spring-boot:run`; start this
+frontend with `npm ci` and `npm run dev`. Open http://localhost:5173/login. Optional
+`VITE_API_BASE_URL` is documented in `.env.example`; restart Vite after changing it.
+See [backend README](../gamestore-backend/README.md) for configuration, API requests,
+profiles, migrations and dedicated test-database setup.
 
-Reviewed `docs/database-decisions.md`, both UCD/Class Diagram pages of
-`docs/diagrams/Diagrams.drawio`, V1 schema, existing authentication contract and
-the shared Navbar, GameCard, Store and management components.
+## Data paths
 
-Checklist completed in order: session/routing and data foundation; Wallet and
-Transactions; Checkout; Library/Reviews; Revenue; automated checks and visual review.
+- JWT account → `commerceGateway` → `commerceApi` → JWT-protected HTTP endpoints.
+- Development `/demo` identity → existing centralized browser mock repository.
+- Production never allows Demo identities and never falls back to mock money.
 
-The existing Login/Register implementations and API base URL are preserved,
-including `onAuthSuccess` and `onNavigate` props. Developer Game Management and
-Administrator User Management are unchanged. Existing Store/GameCard and Navbar
-are extended for shared catalog data, checkout callbacks and URL navigation.
-No backend business logic, database migrations or UML were modified. The local
-ignored backend `application.yaml` was preserved during the fresh clone.
+The HTTP adapter refreshes the shared snapshot after each mutation, retains the
+server's decimal money strings, isolates caches by account, ignores stale fetch
+responses, sends Bearer tokens and stable per-dialog idempotency keys, and clears
+invalid sessions on 401. Purchase submits the displayed final price as an optional
+quote guard; a 409 refreshes catalog data for the next confirmation. A network
+error is shown without inventing a successful payment or local balance update.
 
-## Run
+A real account starts with its actual database balance (zero for a new registration).
+No fixture credit is assigned. In development, the backend `local` profile allows
+clearly labeled test top-ups that write to the database without collecting bank
+money. Without that explicit flag the top-up button is disabled; the application
+does not provide a production bank/payment gateway.
 
-```sh
-cd gamestore-web
-npm ci
-npm run dev
-```
+## Flows and navigation
 
-The first screen remains the existing **Đăng nhập** form. It calls
-`http://localhost:8080/api/auth/login`; registration calls `/api/auth/register`
-with the original request bodies. Successful authentication uses the original
-`steam_jwt_token` key. Refresh restores the identity, expiry returns to Login,
-and **Đăng xuất** removes the token and returns to Login. Protected destinations
-are remembered across login/register. Cross-tab token changes refresh the session.
+| Route                            | Access / behavior                                                |
+| -------------------------------- | ---------------------------------------------------------------- |
+| `/login`, `/register`            | Existing real auth forms; return to requested page               |
+| `/demo`                          | Development only; no real JWT/account                            |
+| `/store`                         | Authenticated; actual catalog, details, checkout                 |
+| `/wallet`                        | Actual balance, development-credit confirmation, recent deposits |
+| `/transactions`                  | Own IN/OUT/BUY history with filters/sorting/pagination           |
+| `/library`                       | Actual permanent ownership; search/sort/filter and review access |
+| `/developer/revenue`             | DEVELOPER, own game sales only                                   |
+| `/admin/revenue`                 | ADMINISTRATOR, system gross sales and developer breakdown        |
+| `/manage-games`, `/manage-users` | Existing teammate pages, preserved                               |
 
-For real backend login, open **http://localhost:5173**. The existing backend CORS
-configuration allows that origin (and localhost:3000), not 127.0.0.1:5173. No
-backend CORS configuration was changed. The E2E loopback URL uses intercepted auth
-responses and therefore does not verify live CORS connectivity.
+Back/Forward, deep links and reload work through BrowserRouter. SPA hosting must
+rewrite non-asset paths to index.html. Role navigation follows the server profile;
+backend checks remain authoritative. Explicit logout resets the redirect destination,
+so signing in as another role does not land on the old role's dashboard.
 
-Real authentication works independently of the commerce mock. In development a
-real account gets commerce simulation records keyed by its actual ID/role; the
-banner explicitly says **TÀI KHOẢN THẬT · THƯƠNG MẠI MÔ PHỎNG**. Its mock verified
-status and starting balance do not represent its actual database balance/status.
+## Rules and components
 
-## Demo evaluation
+`services/currency.js` uses decimal strings and BigInt cents to match NUMERIC(19,2).
+Only enabled promotions apply. The backend independently calculates BigDecimal
+prices and checks wallet/account/game eligibility in one transaction. Free purchases
+still create a successful BUY and permanent ownership. The existing V2 trigger
+creates game_bought; there is no separate ownership insertion by the frontend.
 
-On the real Login screen, click **Thử Demo khi backend chưa sẵn sàng**, or visit
-`/demo` on the development server. Select:
+Ownership dates derive from the referenced transaction. Reviews are one per owner/game,
+ratings 1–5 in 0.5 steps; create/edit/delete refresh aggregate game ratings. Revenue
+uses successful BUY amounts recorded at purchase, excludes IN and uses UTC+7 date
+boundaries. No launch/install, chat/community or ownership removal is implemented.
 
-- **Huỳnh / USER**: wallet, purchases, library and reviews.
-- **Aurora Studio / DEVELOPER**: own revenue and existing Game Management page.
-- **Administrator / ADMINISTRATOR**: system revenue and existing User Management.
+`components/commerce` contains native focus-managed dialogs, artwork/price/table/chart
+components, empty states, shared context and an operation lock hook. Feature views
+are in Wallet, Transactions, Checkout, Library, Reviews and Revenue. Existing Store,
+GameCard and Navbar have small integration extensions. Login/Register and management
+page implementations remain otherwise unchanged; auth API base URL is configurable.
 
-Demo identities are separate from real JWT authentication. Demo selection never
-writes a JWT, and a signed-in real account must log out before entering Demo.
-Demo identity uses sessionStorage key `gamestore.dev-session.v2`; commerce uses
-localStorage key `gamestore.commerce.v2`. Old implementation keys are ignored.
+## Demo mode
 
-All demo accounts start with 100,000 VND and empty transactions/library. Deposit
-500,000, buy **Pixel Valley Farming** for 165,000, and the remaining balance is
-435,000. The BUY transaction and permanent ownership appear immediately. Write,
-edit and delete a review in Library. Switch identities to inspect revenue.
-**Celeste** is free; **Dự án sắp ra mắt** is unavailable. Cyberpunk has an enabled
-25% promotion; a disabled promotion fixture is also defined.
+On the development Login page choose **Thử Demo khi backend chưa sẵn sàng**. USER,
+DEVELOPER and ADMINISTRATOR fixtures share `gamestore.commerce.v2` localStorage and
+an isolated sessionStorage identity. They start with 100,000 VND. For example,
+deposit 500,000 and buy Pixel Valley Farming for 165,000 to leave 435,000. This
+example is exclusive to browser Demo, not a newly registered backend account.
 
-Use **Đặt lại dữ liệu** and confirm to reset all mock money, transactions,
-ownership and reviews while preserving real JWT/backend data. A corrupted,
-incompatible or unknown-version persisted mock starts fresh. Write failures abort
-the operation before publishing any changes.
+**Đặt lại dữ liệu** is available only for Demo. It resets browser fixtures and never
+calls an API to delete database transactions/ownership. Real accounts have no reset
+button and never put commerce records in localStorage. JWT storage remains separate.
 
-`import.meta.env.DEV` gates both Demo UI and the mock mutation/revenue service.
-Production retains real Login/Register and role/management navigation; commerce
-pages explain that their APIs are pending. Production does not pretend that mock
-funds are a real account balance or execute simulated payments.
-
-## Routes and use cases
-
-| Route                 | Access                            | Flow                                                                       |
-| --------------------- | --------------------------------- | -------------------------------------------------------------------------- |
-| `/login`, `/register` | Anonymous                         | Existing real authentication                                               |
-| `/demo`               | Development only, no real session | Fixture selector                                                           |
-| `/store`              | Signed in                         | Existing catalog, search, game details and single-game checkout (UC14)     |
-| `/wallet`             | Signed in                         | Balance, amount presets/custom input, confirmation, deposit history (UC05) |
-| `/transactions`       | Signed in                         | IN/OUT/BUY, all statuses, sorting, filters, pagination (UC06)              |
-| `/library`            | Signed in                         | Owned-game sidebar/search/sort/filter and review CRUD (UC15/16)            |
-| `/developer/revenue`  | DEVELOPER                         | Own sales, daily chart, game performance and dates (UC20)                  |
-| `/admin/revenue`      | ADMINISTRATOR                     | All sales, developers, best sellers, daily chart and dates (UC21)          |
-| `/manage-games`       | DEVELOPER                         | Existing teammate page                                                     |
-| `/manage-users`       | ADMINISTRATOR                     | Existing teammate page                                                     |
-
-BrowserRouter supports direct paths, reload and Back/Forward. Configure production
-hosting to serve `index.html` for non-asset paths. Frontend route guards only guide
-the UI; actual API authorization must happen on the backend.
-
-## Implementation
-
-- `services/session.js`: adapter around the existing `parseJwt`, token key and auth
-  response; a distinct development-only fixture identity. Navbar/logout and all
-  commerce methods read the same current identity.
-- `services/currency.js`: decimal strings compatible with NUMERIC(19,2), BigInt
-  arithmetic in hundredths of VND, arbitrary fractional percentage discounts,
-  half-up rounding to the database's two decimal places, VND formatting and
-  Vietnamese calendar dates (UTC+7).
-- `mocks/commerceSeed.js`: stable UUID fixtures, users.balance, games, promotions,
-  transactions, game_bought and reviews matching the relevant database fields.
-  `genre` and artwork are catalog presentation metadata.
-- `services/commerceService.js`: async, session-bound API (`prepareAccount`,
-  `topUp`, `purchase`, `saveReview`, `deleteReview`, `revenue`, `reset`), subscribed
-  snapshot cache, validation, atomic draft commits and in-tab submission locking.
-  Pages cannot request a different user's identity by passing an ID.
-- `components/commerce`: shared native dialog with focus restoration and error
-  feedback; price/artwork/table/chart/empty/header components; operation lock hook;
-  lightweight React context supplying the repository and current identity.
-- `pages/Checkout`, `Wallet`, `Transactions`, `Reviews`, `Revenue`: feature views.
-  Library replaces its prior placeholder. `commerce.css` extends shared Steam
-  styles with responsive layouts and visible keyboard focus, without replacing
-  teammate auth styles.
-
-Business rules preserve database enum spellings, including `SUCCESSED`. The demo
-generates successful IN/BUY rows; PENDING/FAILED and OUT are supported by display
-and filtering but do not invent additional banking features. Successful purchases
-are immutable; no ownership removal or refunds. The mock simulates the V2 trigger
-that creates `game_bought`; real API clients must not insert ownership themselves.
-Ownership timestamps come from the referenced transaction, not an invented column.
-
-Reviews require ownership and one row per user/game; scores are 1–5 in steps of
-0.5 and content is 1–2,000 characters. Aggregate `games.rating` is recalculated
-after CRUD. Revenue includes only `BUY/SUCCESSED`, sums the recorded amount and
-never recalculates it from current catalog prices. Developer scoping happens
-inside the service as well as the UI. Deposits are never sales revenue.
-
-## Backend handoff
-
-Keep Login/Register and session/token handling. Replace `commerceService` with a
-real asynchronous repository implementing the same DTOs and subscription cache;
-load its snapshot in `prepareAccount` and update subscribers after API responses.
-Use real catalog/ownership/review data, remove the production placeholder when
-those endpoints exist, and change the development mock gate to a real adapter.
-No production commerce endpoints were invented in this iteration.
-
-The backend must derive the user from JWT, enforce role/VERIFIED/ownership, lock
-wallet rows, apply promotions, prevent duplicate callbacks/purchases, and rely on
-the V2 ownership/rating triggers. Integrate bank verification for deposits. Never
-trust localStorage balance or frontend guards. Confirm decimal JSON serialization,
-date-range semantics and server pagination/error DTOs before connecting APIs.
-
-## Verification
+## Checks
 
 ```sh
 npm run lint
 npm run build
 npm test
-npx playwright install chromium
 npm run test:e2e
+npm run test:live
 ```
 
-Node tests cover the complete state journey, decimal/fractional promotion math,
-historic purchase prices, role scoping, anonymous/expired sessions, unavailable,
-free and duplicate purchases, insufficient funds, duplicate submissions,
-identity changes mid-operation, reviews, empty states, reset, failed persistence
-and corrupt storage. Browser tests cover all seven use cases, real Login/Register
-callbacks, login return paths, JWT persistence/logout, management navigation,
-invalid/expired login, role restrictions, date filtering, mobile/Back/Forward and
-production Demo exclusion. Auth HTTP responses are intercepted fixtures: these
-tests do not assert that a live backend/database accepted a credential.
+Standard E2E uses controlled HTTP fixtures for JWT/account flows and browser-only
+fixtures for Demo; live E2E uses the real server, real JWT verification, Flyway and
+PostgreSQL. See the backend README for the live server/database prerequisites.
+Tests/screenshots/traces are under ignored `output/`. Current verified totals:
+12 Node tests, 5 standard browser scenarios, 1 live browser scenario, plus 32 Maven
+backend/database tests. Desktop and mobile-emulated layouts were inspected.
 
-Screenshots/traces go to ignored `output/playwright/`. Store, Revenue and mobile
-Library screenshots have been visually inspected. No backend or database tests
-were run by this frontend change.
-
-Final executed results: `npm run lint` clean; `npm run build` successful;
-`npm test` 8/8 passed; `npm run test:e2e` 5/5 passed; `git diff --check` no
-whitespace errors. Compared with fresh HEAD, Login/Register, both management
-pages, backend and existing documentation/UML have no changes. The rebuilt flow
-also addresses stale/expired sessions, return-to-page after login, identity changes
-while a purchase is pending, corrupt mock storage and decimal-price arithmetic.
+New integration files: `services/commerceApi.js`, `services/commerceGateway.js`,
+`tests/commerceApi.test.js`, `tests/live`, `playwright.live.config.js` and `.env.example`.
+App, session, auth URL configuration, Wallet, Checkout and Store now use the server
+adapter and quote/idempotency handling. Backend implementation/API documentation
+and the new additive V3 migration are detailed in the backend README.
 
 ## Limitations
 
-Commerce remains a development simulation. Real authentication requires the
-existing backend on port 8080; its connectivity was not verified against a live
-database. New real developers have no fixture games and therefore no mock sales.
-Game artwork is illustrative external Steam CDN imagery for fictional catalog
-entries, with a local text/gradient fallback; replace it with the project's own
-licensed assets for release. Persistence serializes writes within one tab and
-does not provide cross-tab commerce locking/synchronization. Revenue chart scrolls
-for long date ranges. Chrome desktop/mobile emulation was tested, not actual mobile
-hardware, Firefox/Safari or a screen reader. Existing teammate auth/management
-pages retain their prior UI, including their current functionality limits.
-
-No game launch/install, community, chat, achievements, Workshop or ownership deletion.
-
-## File inventory
-
-Modified: `src/App.jsx`, `src/components/Navbar/Navbar.jsx`,
-`src/components/GameCard/GameCard.jsx`, `src/pages/Store/StorePage.jsx`,
-`src/pages/Library/LibraryPage.jsx`, `package.json`, `package-lock.json`,
-`.gitignore`, `index.html`, and `README.md`.
-
-Created: `src/commerce.css`, `src/services/session.js`,
-`src/services/currency.js`, `src/services/commerceService.js`,
-`src/mocks/commerceSeed.js`, `src/components/commerce/context.js`,
-`src/components/commerce/useOperation.js`, `src/components/commerce/CommerceUI.jsx`,
-`src/pages/Wallet/WalletPage.jsx`, `src/pages/Transactions/TransactionsPage.jsx`,
-`src/pages/Checkout/CheckoutDialog.jsx`, `src/pages/Reviews/ReviewDialog.jsx`,
-`src/pages/Revenue/RevenuePage.jsx`, `tests/commerce.test.js`,
-`tests/e2e/flows.spec.js`, `playwright.config.js` and this document.
-
-Unchanged: Login/Register source/styles and `utils/auth.js`, both management
-pages, all backend files, migrations and existing database/UML documents.
+Actual bank/PSP callbacks are pending. Real Store needs actual AVAILABLE catalog
+records, created with required game_submissions by the team's game-publishing flow;
+fixture artwork/catalog data is only used in Demo/tests. Initial snapshot currently
+loads all own history and visible public reviews; the backend also provides a
+paginated history endpoint for larger datasets. There is no real-time cross-tab
+commerce refresh stream. Firefox/Safari, mobile hardware and screen-reader testing
+were not performed. Existing teammate management pages keep their previous scope.

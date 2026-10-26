@@ -4,7 +4,7 @@ import {
   createCommerceService,
   COMMERCE_KEY,
 } from "../src/services/commerceService.js";
-import { cents, decimal, priceOf, dayOf } from "../src/services/currency.js";
+import { cents, decimal, priceOf, dayOf, money } from "../src/services/currency.js";
 import {
   decodeSession,
   TOKEN_KEY,
@@ -173,6 +173,7 @@ test("empty data, reset, malformed storage, failed persistence and real account 
 });
 test("decimal-safe money, fractional discounts, disabled promotion and Vietnamese dates", () => {
   assert.equal(decimal(cents("0.10") + cents("0.20")), "0.30");
+  assert.equal(money('99999999999999999.99'), '99.999.999.999.999.999,99\u00a0₫');
   const seed = createSeed();
   assert.equal(priceOf(seed.games[0], seed.promotions).final, "367500.00");
   assert.equal(

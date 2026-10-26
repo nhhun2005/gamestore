@@ -76,6 +76,16 @@ export const session = {
     current = user;
     notify();
   },
+  updateProfile(account) {
+    if (
+      current?.source === "jwt" &&
+      current.id === account.id &&
+      (current.role !== account.role || current.username !== account.username)
+    ) {
+      current = { ...current, role: account.role, username: account.username };
+      notify();
+    }
+  },
   logout() {
     localStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(DEMO_KEY);

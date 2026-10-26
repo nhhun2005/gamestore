@@ -91,6 +91,11 @@ public class AuthController {
                     .body(Map.of("message", "Vui lòng kiểm tra lại mật khẩu và tên tài khoản rồi thử lại."));
         }
 
+        if (user.getStatus() != UserStatus.VERIFIED) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Tài khoản chưa được xác minh hoặc đã bị khóa."));
+        }
+
         String token = jwtService.generateToken(user);
         return ResponseEntity.ok(
                 new AuthResponse(token, user.getId().toString(), user.getUsername(), user.getEmail(),

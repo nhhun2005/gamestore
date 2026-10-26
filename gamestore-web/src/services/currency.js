@@ -9,12 +9,14 @@ export function cents(value) {
 export function decimal(value) {
   return `${value / 100n}.${String(value % 100n).padStart(2, "0")}`;
 }
-export const money = (value) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 2,
-  }).format(Number(value));
+export function money(value) {
+  const amount = cents(value);
+  const whole = new Intl.NumberFormat("vi-VN").format(amount / 100n);
+  const fraction = String(amount % 100n)
+    .padStart(2, "0")
+    .replace(/0+$/, "");
+  return `${whole}${fraction ? "," + fraction : ""}\u00a0₫`;
+}
 export function priceOf(game, promotions) {
   const promotion = promotions.find(
     (p) => p.id === game.promotion_id && p.status === "ENABLED",

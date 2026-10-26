@@ -8,8 +8,9 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "node --test tests/commerce.test.js",
-    "test:e2e": "playwright test"
+    "test": "node --test tests/commerce.test.js tests/commerceApi.test.js",
+    "test:e2e": "playwright test",
+    "test:live": "playwright test --config playwright.live.config.js"
   },
   "dependencies": {
     "react": "^19.3.1",

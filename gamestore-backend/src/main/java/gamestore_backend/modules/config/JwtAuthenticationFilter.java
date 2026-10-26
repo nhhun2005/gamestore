@@ -31,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtService.isTokenValid(token)) {
+            try {
                 Claims claims = jwtService.extractAllClaims(token);
                 String username = claims.getSubject();
                 String role = claims.get("role", String.class);
@@ -41,6 +41,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+            } catch (io.jsonwebtoken.JwtException | IllegalArgumentException invalidToken) {
+                SecurityContextHolder.clearContext();
             }
         }
         filterChain.doFilter(request, response);
