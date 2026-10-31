@@ -34,7 +34,8 @@ public class CommerceService {
     public State state(Authentication authentication) {
         Account user = actor(authentication, false);
         return new State(view(user), repository.publicUsers(user), repository.games(user), repository.promotions(),
-            repository.transactions(user.id()), repository.ownerships(user.id()), repository.reviews(user), new Capabilities(demoTopups));
+            repository.transactions(user.id()), repository.ownerships(user.id()), repository.reviews(user),
+            repository.wishlist(user.id()), new Capabilities(demoTopups));
     }
     @Transactional(readOnly = true)
     public AccountView wallet(Authentication authentication) { return view(actor(authentication, false)); }
@@ -108,6 +109,42 @@ public class CommerceService {
         Review review = repository.review(reviewId, user.id()).orElseThrow(() -> new CommerceException(NOT_FOUND, "Không tìm thấy đánh giá của bạn."));
         repository.game(review.game_id(), true);
         repository.deleteReview(reviewId, user.id());
+    }
+    @Transactional(readOnly = true)
+    public List<WishlistEntry> wishlist(Authentication authentication) {
+        Account user = actor(authentication, false);
+        return repository.wishlist(user.id());
+    }
+    @Transactional
+    public void addWishlist(Authentication authentication, UUID gameId) {
+        Account user = actor(authentication, false);
+        Game game = repository.game(gameId, false)
+            .orElseThrow(() -> new CommerceException(NOT_FOUND, "Trò chơi không tồn tại."));
+        if (!game.status().equals("AVAILABLE"))
+            throw new CommerceException(CONFLICT, "Trò chơi hiện chưa mở bán.");
+        if (repository.owns(user.id(), gameId))
+            throw new CommerceException(CONFLICT, "Bạn đã sở hữu trò chơi này.");
+        repository.addWishlist(user.id(), gameId);
+    }
+    @Transactional
+    public void removeWishlist(Authentication authentication, UUID gameId) {
+        Account user = actor(authentication, false);
+        repository.removeWishlist(user.id(), gameId);
+    }
+    @Transactional(readOnly = true)
+    public NotificationSummary notifications(Authentication authentication) {
+        Account user = actor(authentication, false);
+        return new NotificationSummary(repository.notifications(user.id()), repository.unreadNotificationCount(user.id()));
+    }
+    @Transactional
+    public void markNotificationRead(Authentication authentication, UUID notificationId) {
+        Account user = actor(authentication, false);
+        repository.markNotificationRead(user.id(), notificationId);
+    }
+    @Transactional
+    public void markAllNotificationsRead(Authentication authentication) {
+        Account user = actor(authentication, false);
+        repository.markAllNotificationsRead(user.id());
     }
     @Transactional(readOnly = true)
     public List<RevenueSale> revenue(Authentication authentication, LocalDate from, LocalDate to) {

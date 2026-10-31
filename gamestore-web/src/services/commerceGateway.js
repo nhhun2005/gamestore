@@ -20,6 +20,12 @@ export const commerceGateway = {
   purchase: (...args) => current().purchase(...args),
   saveReview: (...args) => current().saveReview(...args),
   deleteReview: (...args) => current().deleteReview(...args),
+  addWishlist: (...args) => current().addWishlist(...args),
+  removeWishlist: (...args) => current().removeWishlist(...args),
+  notifications: (...args) => current().notifications(...args),
+  markNotificationRead: (...args) => current().markNotificationRead(...args),
+  markAllNotificationsRead: (...args) =>
+    current().markAllNotificationsRead(...args),
   revenue: (...args) => current().revenue(...args),
   reset: (...args) => current().reset(...args),
 };

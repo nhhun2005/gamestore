@@ -208,3 +208,15 @@ test("the existing JWT contract survives reload and rejects malformed or expired
   assert.equal(decodeSession(jwt({ id: "id", sub: "name", exp: 1 })), null);
   assert.equal(decodeSession("malformed"), null);
 });
+
+test("wishlist add and remove updates state properly", async () => {
+  const { service: s } = fixture();
+  assert.deepEqual(s.snapshot().wishlist, []);
+  await s.addWishlist(gameId(1));
+  assert.equal(s.snapshot().wishlist.length, 1);
+  assert.equal(s.snapshot().wishlist[0].game_id, gameId(1));
+  await s.addWishlist(gameId(1));
+  assert.equal(s.snapshot().wishlist.length, 1);
+  await s.removeWishlist(gameId(1));
+  assert.equal(s.snapshot().wishlist.length, 0);
+});

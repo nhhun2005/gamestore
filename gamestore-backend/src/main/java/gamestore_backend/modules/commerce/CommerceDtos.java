@@ -17,11 +17,16 @@ public final class CommerceDtos {
                               String status, String created_at, UUID idempotency_key) {}
     public record Ownership(UUID user_id, UUID game_id, UUID transaction_id) {}
     public record Review(UUID id, UUID user_id, UUID game_id, BigDecimal rating, String content) {}
+    public record WishlistEntry(UUID game_id, String created_at) {}
+    public record NotificationItem(UUID id, UUID game_id, UUID promotion_id, String type, String title,
+                                  String message, String discount, String created_at, String read_at, boolean is_read) {}
+    public record NotificationSummary(List<NotificationItem> items, long unread_count) {}
     public record Capabilities(boolean demo_topups) {}
     public record RevenueSale(UUID id, UUID game_id, String type, String amount, String status, String created_at) {}
     public record State(AccountView current_user, List<UserSummary> users, List<Game> games,
                         List<Promotion> promotions, List<Transaction> transactions,
-                        List<Ownership> game_bought, List<Review> reviews, Capabilities capabilities) {}
+                        List<Ownership> game_bought, List<Review> reviews,
+                        List<WishlistEntry> wishlist, Capabilities capabilities) {}
     public record TransactionPage(List<Transaction> items, long total, int page, int size) {}
     public record DepositRequest(
         @NotNull @DecimalMin(value = "0", inclusive = false) @DecimalMax("100000000")
@@ -29,4 +34,5 @@ public final class CommerceDtos {
     public record PurchaseRequest(@NotNull UUID game_id, @DecimalMin("0") @Digits(integer=17, fraction=2) BigDecimal expected_amount) {}
     public record ReviewRequest(@NotNull @DecimalMin("1") @DecimalMax("5") BigDecimal rating,
                                 @NotBlank @Size(max = 2000) String content) {}
+    public record WishlistRequest(@NotNull UUID game_id) {}
 }

@@ -87,5 +87,6 @@ export function createSeed() {
     transactions: [],
     game_bought: [],
     reviews: [],
+    wishlist: [],
   };
 }

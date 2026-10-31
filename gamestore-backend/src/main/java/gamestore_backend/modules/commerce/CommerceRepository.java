@@ -4,6 +4,7 @@ import static gamestore_backend.modules.commerce.CommerceDtos.*;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,6 +26,31 @@ public class CommerceRepository {
         r.getString("status"), r.getObject("created_at", OffsetDateTime.class).toInstant().toString(), r.getObject("idempotency_key", UUID.class));
     private static final RowMapper<Review> REVIEW = (r, n) -> new Review(r.getObject("id", UUID.class),
         r.getObject("user_id", UUID.class), r.getObject("game_id", UUID.class), r.getBigDecimal("rating"), r.getString("content"));
+    private static final RowMapper<WishlistEntry> WISHLIST_ENTRY = (r, n) -> {
+        OffsetDateTime created = r.getObject("created_at", OffsetDateTime.class);
+        return new WishlistEntry(
+            r.getObject("game_id", UUID.class),
+            created != null ? created.toInstant().toString() : Instant.now().toString()
+        );
+    };
+    private static final RowMapper<NotificationItem> NOTIFICATION_ITEM = (r, n) -> {
+        OffsetDateTime created = r.getObject("created_at", OffsetDateTime.class);
+        OffsetDateTime read = r.getObject("read_at", OffsetDateTime.class);
+        BigDecimal discount = r.getBigDecimal("discount");
+        return new NotificationItem(
+            r.getObject("id", UUID.class),
+            r.getObject("game_id", UUID.class),
+            r.getObject("promotion_id", UUID.class),
+            r.getString("type"),
+            r.getString("title"),
+            r.getString("message"),
+            discount != null ? discount.stripTrailingZeros().toPlainString() : null,
+            created != null ? created.toInstant().toString() : null,
+            read != null ? read.toInstant().toString() : null,
+            read != null
+        );
+    };
+
     private static final String GAME_SELECT = """
         SELECT g.*, COALESCE((SELECT string_agg(ge.name, ', ' ORDER BY ge.name)
             FROM game_genres gg JOIN genres ge ON ge.id=gg.genre_id WHERE gg.game_id=g.id), 'Trò chơi') AS genre
@@ -64,6 +90,31 @@ public class CommerceRepository {
     }
     public boolean owns(UUID user, UUID game) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM game_bought WHERE user_id=? AND game_id=?)", Boolean.class, user, game));
+    }
+    public List<WishlistEntry> wishlist(UUID user) {
+        return jdbc.query("SELECT game_id, created_at FROM wishlists WHERE user_id=? ORDER BY created_at DESC", WISHLIST_ENTRY, user);
+    }
+    public boolean isWishlisted(UUID user, UUID game) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM wishlists WHERE user_id=? AND game_id=?)", Boolean.class, user, game));
+    }
+    public void addWishlist(UUID user, UUID game) {
+        jdbc.update("INSERT INTO wishlists(user_id, game_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (user_id, game_id) DO NOTHING", user, game);
+    }
+    public void removeWishlist(UUID user, UUID game) {
+        jdbc.update("DELETE FROM wishlists WHERE user_id=? AND game_id=?", user, game);
+    }
+    public List<NotificationItem> notifications(UUID user) {
+        return jdbc.query("SELECT id, game_id, promotion_id, type, title, message, discount, created_at, read_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50", NOTIFICATION_ITEM, user);
+    }
+    public long unreadNotificationCount(UUID user) {
+        Long count = jdbc.queryForObject("SELECT count(*) FROM notifications WHERE user_id=? AND read_at IS NULL", Long.class, user);
+        return count != null ? count : 0L;
+    }
+    public void markNotificationRead(UUID user, UUID notificationId) {
+        jdbc.update("UPDATE notifications SET read_at=CURRENT_TIMESTAMP WHERE user_id=? AND id=? AND read_at IS NULL", user, notificationId);
+    }
+    public void markAllNotificationsRead(UUID user) {
+        jdbc.update("UPDATE notifications SET read_at=CURRENT_TIMESTAMP WHERE user_id=? AND read_at IS NULL", user);
     }
     public List<Transaction> transactions(UUID user) {
         return jdbc.query("SELECT * FROM transactions WHERE user_id=? ORDER BY created_at DESC,id DESC", TRANSACTION, user);

@@ -14,6 +14,7 @@ function validState(state) {
         "game_bought",
         "reviews",
       ].every((key) => Array.isArray(state[key])) &&
+      (!state.wishlist || Array.isArray(state.wishlist)) &&
       state.users.every(
         (u) =>
           typeof u.id === "string" &&
@@ -94,7 +95,9 @@ export function createCommerceService({
   let state = createSeed();
   try {
     const saved = JSON.parse(storage?.getItem(COMMERCE_KEY));
-    if (enabled && validState(saved)) state = saved;
+    if (enabled && validState(saved)) {
+      state = { ...saved, wishlist: saved.wishlist || [] };
+    }
   } catch {
     /* Fresh state after incompatible or corrupt storage. */
   }
@@ -270,6 +273,27 @@ export function createCommerceService({
         updateRating(draft, row.game_id);
       });
     },
+    async addWishlist(gameId) {
+      return mutate((draft) => {
+        if (!draft.wishlist) draft.wishlist = [];
+        if (!draft.wishlist.some((w) => w.game_id === gameId)) {
+          draft.wishlist.unshift({
+            game_id: gameId,
+            created_at: new Date().toISOString(),
+          });
+        }
+      });
+    },
+    async removeWishlist(gameId) {
+      return mutate((draft) => {
+        draft.wishlist = (draft.wishlist || []).filter((w) => w.game_id !== gameId);
+      });
+    },
+    async notifications() {
+      return { items: [], unread_count: 0 };
+    },
+    async markNotificationRead() {},
+    async markAllNotificationsRead() {},
     async revenue({ from = "", to = "" } = {}) {
       if (!enabled) throw Error("API doanh thu chưa được tích hợp.");
       const user = actor();

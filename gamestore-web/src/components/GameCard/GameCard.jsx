@@ -1,5 +1,7 @@
+import { useState } from "react";
 import "./GameCard.css";
 import { Artwork, PriceDisplay } from "../commerce/CommerceUI";
+import { useCommerce } from "../commerce/context";
 
 function GameCard({
   title,
@@ -10,8 +12,49 @@ function GameCard({
   game,
   promotions = [],
 }) {
+  const { state, user, service } = useCommerce() || {};
+  const [busy, setBusy] = useState(false);
+
+  const owned =
+    isOwned ||
+    (game &&
+      state?.game_bought?.some(
+        (p) => p.game_id === game.id && p.user_id === user?.id,
+      ));
+  const isWishlisted =
+    game && (state?.wishlist ?? []).some((w) => w.game_id === game.id);
+
+  async function handleWishlistToggle(e) {
+    e.stopPropagation();
+    if (!service || !game || busy) return;
+    setBusy(true);
+    try {
+      if (isWishlisted) {
+        await service.removeWishlist(game.id);
+      } else {
+        await service.addWishlist(game.id);
+      }
+    } catch {
+      // Ignored for smoother UI toggle
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <article className="game-card">
+      {game && user && !owned && (
+        <button
+          type="button"
+          className={`game-card-wishlist-btn ${isWishlisted ? "active" : ""}`}
+          aria-label={isWishlisted ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+          title={isWishlisted ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+          disabled={busy}
+          onClick={handleWishlistToggle}
+        >
+          {isWishlisted ? "♥" : "♡"}
+        </button>
+      )}
       {game ? (
         <Artwork game={game} />
       ) : (

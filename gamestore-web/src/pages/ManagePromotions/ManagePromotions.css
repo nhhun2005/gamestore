@@ -1,0 +1,74 @@
+.promo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.promo-card {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  margin: 0;
+  padding: 18px 22px;
+  border-left: 4px solid #456075;
+}
+.promo-card.on { border-left-color: #a4d007; }
+.promo-percent { font-size: 30px; font-weight: 700; color: #a4d007; }
+.promo-card:not(.on) .promo-percent { color: #7a8d9c; }
+.promo-main { min-width: 0; }
+.promo-main h3 { margin: 0 0 4px; overflow-wrap: anywhere; }
+.promo-main small { color: #94acbf; }
+.promo-games-line { margin: 8px 0 0 !important; color: #b8cbd9; font-size: 13px; overflow-wrap: anywhere; }
+.promo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.promo-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  background: #101e2c;
+  border: 1px solid #3e5a70;
+  border-radius: 999px;
+  color: #b8cbd9;
+  font-size: 13px;
+  cursor: pointer;
+}
+.promo-switch.on { border-color: #6f9a1a; color: #c6e86a; }
+.promo-switch-knob {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #3e5a70;
+  transition: background 0.15s;
+}
+.promo-switch.on .promo-switch-knob { background: #a4d007; }
+.promo-switch-knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+}
+.promo-switch.on .promo-switch-knob::after { transform: translateX(14px); }
+.promo-percent-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.promo-page .promo-percent-row input, .commerce-dialog .promo-percent-row input { width: 90px; flex: none; }
+.promo-percent-row .commerce-button { padding: 8px 12px; }
+.promo-picker { border: 1px solid #48627a; border-radius: 4px; padding: 14px; margin: 16px 0; }
+.promo-picker-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; color: #e4edf4; }
+.promo-games { list-style: none; margin: 12px 0 0; padding: 0; max-height: 280px; overflow-y: auto; }
+.promo-games-empty { padding: 12px 4px; color: #94acbf; }
+.promo-game { display: flex !important; align-items: center; gap: 12px; margin: 0 !important; padding: 9px 4px; border-bottom: 1px solid #263a4d; cursor: pointer; }
+.promo-game.taken { opacity: 0.5; cursor: not-allowed; }
+.promo-game input { width: 18px; height: 18px; accent-color: #66c0f4; flex: none; }
+.promo-game-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.promo-game-info strong { color: #e4edf4; font-weight: 500; overflow-wrap: anywhere; }
+.promo-game-info small { color: #94acbf; }
+.promo-game-price { font-size: 13px; text-align: right; white-space: nowrap; color: #b8cbd9; }
+.promo-game-price del { color: #7a8d9c; }
+.promo-game-price strong { color: #a4d007; }
+.promo-activate { display: flex !important; align-items: flex-start; gap: 10px; margin: 16px 0 !important; cursor: pointer; }
+.promo-activate input { width: 18px; height: 18px; margin-top: 2px; accent-color: #66c0f4; flex: none; }
+@media (max-width: 720px) {
+  .promo-card { grid-template-columns: 1fr; gap: 12px; }
+  .promo-actions { justify-content: flex-start; }
+}

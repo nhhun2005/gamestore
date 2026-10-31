@@ -1,9 +1,12 @@
 import { NavLink } from "react-router-dom";
+import NotificationBell from "../Notifications/NotificationBell";
 import "./Navbar.css";
+
 function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
   const pages = [
     ["store", "Cửa hàng (Store)"],
     ["library", "Thư viện (Library)"],
+    ["wishlist", "Yêu thích"],
     ["wallet", "Ví"],
     ["transactions", "Giao dịch"],
   ];
@@ -16,6 +19,7 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
     pages.push(
       ["manage-users", "Quản lý người dùng"],
       ["admin/games", "Quản lý trò chơi"],
+      ["admin/promotions", "Khuyến mãi"],
       ["admin/revenue", "Doanh thu"],
     );
   return (
@@ -43,6 +47,7 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
         <div className="steam-user-actions">
           {user ? (
             <>
+              {user.source === "jwt" && <NotificationBell />}
               <div className="user-info-box">
                 <span className="user-name">{user.username}</span>
                 <span className={`role-tag ${user.role}`}>{user.role}</span>

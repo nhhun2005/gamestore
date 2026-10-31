@@ -20,6 +20,8 @@ import ManageGamesPage from "./pages/ManageGames/ManageGamesPage";
 import GameCatalogPage from "./pages/ManageGames/GameCatalogPage";
 import GameSubmissionsPage from "./pages/ManageGames/GameSubmissionsPage";
 import ManageGenresPage from "./pages/ManageGames/ManageGenresPage";
+import ManagePromotionsPage from "./pages/ManagePromotions/ManagePromotionsPage";
+import WishlistPage from "./pages/Wishlist/WishlistPage";
 import WalletPage from "./pages/Wallet/WalletPage";
 import TransactionsPage from "./pages/Transactions/TransactionsPage";
 import RevenuePage from "./pages/Revenue/RevenuePage";
@@ -263,6 +265,7 @@ function Application() {
               <LibraryPage user={user} onNavigate={navigatePage} />,
             )}
           />
+          <Route path="/wishlist" element={protectedPage(<WishlistPage />)} />
           <Route
             path="/developer/revenue"
             element={protectedPage(<RevenuePage />, "DEVELOPER")}
@@ -270,6 +273,13 @@ function Application() {
           <Route
             path="/admin/revenue"
             element={protectedPage(<RevenuePage />, "ADMINISTRATOR")}
+          />
+          <Route
+            path="/admin/promotions"
+            element={protectedPage(
+              <ManagePromotionsPage />,
+              "ADMINISTRATOR",
+            )}
           />
           <Route
             path="/manage-games"

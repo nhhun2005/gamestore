@@ -6,6 +6,7 @@ export const EMPTY_COMMERCE_STATE = {
   transactions: [],
   game_bought: [],
   reviews: [],
+  wishlist: [],
   capabilities: { demo_topups: false },
 };
 const API_BASE =
@@ -72,6 +73,7 @@ export function createHttpCommerceService({
         data.current_user,
         ...data.users.filter((u) => u.id !== data.current_user.id),
       ],
+      wishlist: data.wishlist || [],
     };
     cacheOwner = user.id;
     if (identity === session.snapshot) session.updateProfile(data.current_user);
@@ -119,6 +121,29 @@ export function createHttpCommerceService({
     deleteReview(id) {
       return mutation(`/reviews/${encodeURIComponent(id)}`, {
         method: "DELETE",
+      });
+    },
+    addWishlist(gameId) {
+      return mutation(`/wishlist/${encodeURIComponent(gameId)}`, {
+        method: "POST",
+      });
+    },
+    removeWishlist(gameId) {
+      return mutation(`/wishlist/${encodeURIComponent(gameId)}`, {
+        method: "DELETE",
+      });
+    },
+    notifications() {
+      return request("/notifications");
+    },
+    markNotificationRead(id) {
+      return request(`/notifications/${encodeURIComponent(id)}/read`, {
+        method: "PUT",
+      });
+    },
+    markAllNotificationsRead() {
+      return request("/notifications/read-all", {
+        method: "PUT",
       });
     },
     revenue({ from = "", to = "" } = {}) {

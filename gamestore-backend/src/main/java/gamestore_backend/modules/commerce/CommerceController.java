@@ -37,4 +37,34 @@ public class CommerceController {
     @GetMapping("/revenue")
     public List<RevenueSale> revenue(Authentication auth, @RequestParam(required=false) LocalDate from,
         @RequestParam(required=false) LocalDate to) { return service.revenue(auth, from, to); }
+
+    @GetMapping("/wishlist")
+    public List<WishlistEntry> wishlist(Authentication auth) {
+        return service.wishlist(auth);
+    }
+    @PostMapping("/wishlist/{gameId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void addWishlist(Authentication auth, @PathVariable UUID gameId) {
+        service.addWishlist(auth, gameId);
+    }
+    @DeleteMapping("/wishlist/{gameId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeWishlist(Authentication auth, @PathVariable UUID gameId) {
+        service.removeWishlist(auth, gameId);
+    }
+
+    @GetMapping("/notifications")
+    public NotificationSummary notifications(Authentication auth) {
+        return service.notifications(auth);
+    }
+    @PutMapping("/notifications/{id}/read")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markNotificationRead(Authentication auth, @PathVariable UUID id) {
+        service.markNotificationRead(auth, id);
+    }
+    @PutMapping("/notifications/read-all")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markAllNotificationsRead(Authentication auth) {
+        service.markAllNotificationsRead(auth);
+    }
 }
