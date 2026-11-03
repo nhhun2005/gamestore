@@ -2,7 +2,7 @@
 
 ## Giao diện và quyền
 
-- Admin: **Quản lý trò chơi → Quản lý trò chơi** (`/admin/games`) để CRUD mọi game, chọn chủ sở hữu khi tạo, chọn `HIDDEN`/`AVAILABLE`, ẩn hoặc xóa hoàn toàn. Tab **Đơn đăng tải trò chơi** (`/admin/games/submissions`) có lọc trạng thái, tìm theo tên game/developer và phân trang. Tab quản lý thể loại được giữ lại.
+- Admin mở **Quản lý trò chơi** (`/admin/games`) để tạo, sửa, ẩn hoặc xóa game và chọn chủ sở hữu khi tạo. Game có đơn `PENDING` được xem và xử lý tại **Đơn đăng tải trò chơi** (`/admin/games/submissions`). Tab này hỗ trợ lọc trạng thái, tìm theo tên game hoặc developer và phân trang.
 - Developer: **Quản lý trò chơi** có **Đăng tải trò chơi** (`/manage-games/new`) và **Trò chơi đã đăng tải** (`/manage-games`). Chỉ quản lý game của chính mình. Tạo game là lưu bản nháp `HIDDEN`; sau đó nhấn **Đăng tải trò chơi** trên thẻ để gửi đơn xét duyệt.
 - User thông thường tiếp tục xem game phát hành trong cửa hàng. Các chức năng commerce đã có được giữ lại, không bổ sung luồng mua mới trong thay đổi này.
 - Demo không gọi API quản lý thật; cần đăng nhập bằng tài khoản thật có quyền tương ứng và trạng thái `VERIFIED`.
@@ -12,7 +12,7 @@ Mỗi game bắt buộc có ít nhất một thể loại khi tạo hoặc sửa
 ## Bản nháp, gửi đơn và duyệt
 
 1. Tạo game và các liên kết thể loại trong cùng transaction; chưa tạo `GameSubmission`.
-2. Gửi đơn là một thao tác riêng. Backend tự ghi người gửi; `reason` để NULL, trạng thái `PENDING`. Chặn gửi trùng khi game đã có đơn chờ duyệt.
+2. Gửi đơn là một thao tác riêng. Backend ghi người gửi và `created_at`, đặt `reason` là NULL và trạng thái là `PENDING`. Chặn gửi trùng khi game đã có đơn chờ duyệt.
 3. Admin xem nội dung và nhập lý do duyệt hoặc từ chối. `reason` là lý do của admin, không phải lý do developer gửi đơn. `ACCEPTED` đồng thời phát hành game (`AVAILABLE`); `REJECTED` giữ `HIDDEN`. Đơn đã xử lý không được duyệt lại.
 4. Developer có thể ẩn game đã phát hành, rồi bật lại nếu vẫn có đơn `ACCEPTED`. Game mới hoặc game đã sửa khiến đơn bị từ chối không được tự bật lại.
 5. Sửa nội dung game có chủ sở hữu không phải admin sẽ chuyển game về `HIDDEN`, đổi các đơn `ACCEPTED` thành `REJECTED` với reason chính xác **Trò chơi đã bị chỉnh sửa**. Áp dụng cả khi game đang ẩn để không thể ẩn → sửa → bật lại bằng kết quả duyệt cũ. Nội dung gồm tên, mô tả, giá, ảnh, phiên bản và tập thể loại. Lưu mà không thay đổi nội dung giữ kết quả duyệt. Không thêm cột theo dõi nội dung. Game thuộc admin không bị buộc duyệt lại; admin có thể phát hành game qua thao tác trạng thái.
