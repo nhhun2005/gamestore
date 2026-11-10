@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import "./GameCard.css";
 import { Artwork, PriceDisplay } from "../commerce/CommerceUI";
 import { useCommerce } from "../commerce/context";
@@ -61,7 +62,9 @@ function GameCard({
         <div className="game-card-thumb">{title}</div>
       )}
       <div className="game-card-body">
-        <h3 className="game-card-title">{title}</h3>
+        <h3 className="game-card-title">
+          {game ? <Link to={`/games/${encodeURIComponent(game.id)}`}>{title}</Link> : title}
+        </h3>
         <div className="game-card-meta">
           <span>
             {game
@@ -69,7 +72,11 @@ function GameCard({
               : subtitle}
           </span>
           {game && <PriceDisplay game={game} promotions={promotions} />}
-          {isOwned || onActionClick ? (
+          {game ? (
+            <Link className="steam-auth-btn primary" to={`/games/${encodeURIComponent(game.id)}`}>
+              Xem chi tiết
+            </Link>
+          ) : isOwned || onActionClick ? (
             <button className="steam-auth-btn primary" onClick={onActionClick}>
               {game ? "Xem chi tiết" : actionText || "Xem chi tiết"}
             </button>

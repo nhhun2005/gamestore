@@ -1,0 +1,104 @@
+/* Dark theme styling for developer registration & admin submissions */
+
+.developer-registration-page .developer-status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+
+.developer-registration-page .developer-status-badge.status-PENDING {
+  color: #f5b041;
+  background: rgba(245, 176, 65, 0.15);
+  border-color: rgba(245, 176, 65, 0.4);
+}
+
+.developer-registration-page .developer-status-badge.status-ACCEPTED {
+  color: #a4d007;
+  background: rgba(164, 208, 7, 0.15);
+  border-color: rgba(164, 208, 7, 0.4);
+}
+
+.developer-registration-page .developer-status-badge.status-REJECTED {
+  color: #ff7373;
+  background: rgba(255, 115, 115, 0.15);
+  border-color: rgba(255, 115, 115, 0.4);
+}
+
+.developer-registration-page .developer-feedback-box {
+  background: #142232;
+  border: 1px solid #385268;
+  border-left: 4px solid #66c0f4;
+  border-radius: 4px;
+  padding: 12px 16px;
+  color: #c7d5e0;
+}
+
+.developer-registration-page .developer-feedback-box strong {
+  display: block;
+  color: #9cdbff;
+  margin-bottom: 4px;
+}
+
+.developer-registration-page .developer-feedback-box p,
+.developer-registration-page .developer-reason-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.developer-registration-page .submission-list {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.developer-registration-page .submission-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.developer-registration-page .submission-list li h3 {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 640px) {
+  .developer-registration-page .submission-list li > div:first-child {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .developer-registration-page .genre-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .developer-registration-page .genre-actions .commerce-button {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .developer-registration-page .game-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .developer-registration-page .game-filters .genre-field {
+    min-width: 100%;
+  }
+
+  .developer-registration-page .game-filters .commerce-button {
+    width: 100%;
+    margin-top: 4px;
+  }
+}

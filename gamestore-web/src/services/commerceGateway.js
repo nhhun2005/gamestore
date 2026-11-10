@@ -16,6 +16,7 @@ export const commerceGateway = {
     };
   },
   prepareAccount: (...args) => current().prepareAccount(...args),
+  createTopUpChallenge: (...args) => current().createTopUpChallenge(...args),
   topUp: (...args) => current().topUp(...args),
   purchase: (...args) => current().purchase(...args),
   saveReview: (...args) => current().saveReview(...args),

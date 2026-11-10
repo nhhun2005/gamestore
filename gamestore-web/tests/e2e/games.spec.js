@@ -26,6 +26,9 @@ async function setup(page, initialRole = "DEVELOPER") {
     ],
   };
   let sequence = 0;
+  await page.route("**/api/commerce/notifications", (route) =>
+    route.fulfill({ json: { items: [], unread_count: 0 } }),
+  );
   await page.addInitScript((token) => {
     if (!localStorage.getItem("steam_jwt_token"))
       localStorage.setItem("steam_jwt_token", token);

@@ -12,9 +12,9 @@ class CommercePriceTests {
         assertEquals(new BigDecimal("2.63"), CommerceService.effectivePrice(new BigDecimal("3.00"), promotion));
         assertEquals(new BigDecimal("3.00"), CommerceService.effectivePrice(new BigDecimal("3.00"), new CommerceDtos.Promotion(promotion.id(), "Disabled", "50", "DISABLED")));
     }
-    @Test void bankSimulationIsDisabledByDefault() {
+    @Test void bankSimulationCanBeDisabledByConfiguration() {
         var service = new CommerceService(null, false);
-        var error = assertThrows(CommerceException.class, () -> service.deposit(null, BigDecimal.ONE, UUID.randomUUID()));
+        var error = assertThrows(CommerceException.class, () -> service.deposit(null, BigDecimal.ONE, UUID.randomUUID(), null, null));
         assertEquals(503, error.status().value());
     }
 }

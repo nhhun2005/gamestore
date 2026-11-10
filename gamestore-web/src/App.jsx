@@ -11,6 +11,7 @@ import {
 } from "react-router-dom";
 import Navbar from "./components/Navbar/Navbar";
 import StorePage from "./pages/Store/StorePage";
+import GameDetailsPage from "./pages/GameDetails/GameDetailsPage";
 import LibraryPage from "./pages/Library/LibraryPage";
 import LoginPage from "./pages/Login/LoginPage";
 import RegisterPage from "./pages/Register/RegisterPage";
@@ -25,6 +26,8 @@ import WishlistPage from "./pages/Wishlist/WishlistPage";
 import WalletPage from "./pages/Wallet/WalletPage";
 import TransactionsPage from "./pages/Transactions/TransactionsPage";
 import RevenuePage from "./pages/Revenue/RevenuePage";
+import DeveloperRegistrationPage from "./pages/DeveloperRegistration/DeveloperRegistrationPage";
+import AdminDeveloperSubmissionsPage from "./pages/DeveloperRegistration/AdminDeveloperSubmissionsPage";
 import { session, demoUsers } from "./services/session";
 import { commerceGateway as commerceService } from "./services/commerceGateway";
 import { CommerceContext } from "./components/commerce/context";
@@ -105,11 +108,11 @@ function Application() {
           replace
         />
       );
-    if (role && user.role !== role)
+    if (role && !(Array.isArray(role) ? role : [role]).includes(user.role))
       return (
         <main className="steam-main-content commerce-page">
           <h1>Không có quyền truy cập</h1>
-          <p>Trang này dành cho {role}.</p>
+          <p>Trang này dành cho {Array.isArray(role) ? role.join(", ") : role}.</p>
           <Link to="/store">Về cửa hàng</Link>
         </main>
       );
@@ -209,7 +212,7 @@ function Application() {
       {user && (
         <Navbar
           user={user}
-          activePage={location.pathname.slice(1)}
+          activePage={location.pathname.startsWith("/games/") ? "store" : location.pathname.slice(1)}
           onNavigate={navigatePage}
           onLogout={logout}
           balance={account ? money(account.balance) : undefined}
@@ -254,6 +257,7 @@ function Application() {
               false,
             )}
           />
+          <Route path="/games/:gameId" element={protectedPage(<GameDetailsPage />)} />
           <Route path="/wallet" element={protectedPage(<WalletPage />)} />
           <Route
             path="/transactions"
@@ -266,6 +270,8 @@ function Application() {
             )}
           />
           <Route path="/wishlist" element={protectedPage(<WishlistPage />)} />
+          <Route path="/developer/register" element={protectedPage(<DeveloperRegistrationPage />, ["USER", "DEVELOPER"])} />
+          <Route path="/admin/developers" element={protectedPage(<AdminDeveloperSubmissionsPage />, "ADMINISTRATOR")} />
           <Route
             path="/developer/revenue"
             element={protectedPage(<RevenuePage />, "DEVELOPER")}

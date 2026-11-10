@@ -22,9 +22,15 @@ public class CommerceController {
         @RequestParam(defaultValue="20") int size, @RequestParam(defaultValue="newest") String sort) {
         return service.history(auth, type, status, page, size, sort);
     }
+    @PostMapping("/wallet/demo-topups/challenges") @ResponseStatus(HttpStatus.CREATED)
+    public TopUpChallenge topUpChallenge(Authentication auth, @Valid @RequestBody DepositRequest request) {
+        return service.createTopUpChallenge(auth, request.amount());
+    }
     @PostMapping("/wallet/demo-topups") @ResponseStatus(HttpStatus.CREATED)
-    public Transaction deposit(Authentication auth, @Valid @RequestBody DepositRequest request,
-        @RequestHeader("Idempotency-Key") UUID key) { return service.deposit(auth, request.amount(), key); }
+    public Transaction deposit(Authentication auth, @Valid @RequestBody ConfirmDepositRequest request,
+        @RequestHeader("Idempotency-Key") UUID key) {
+        return service.deposit(auth, request.amount(), key, request.challenge_id(), request.code());
+    }
     @PostMapping("/purchases") @ResponseStatus(HttpStatus.CREATED)
     public Transaction purchase(Authentication auth, @Valid @RequestBody PurchaseRequest request,
         @RequestHeader("Idempotency-Key") UUID key) { return service.purchase(auth, request.game_id(), key, request.expected_amount()); }

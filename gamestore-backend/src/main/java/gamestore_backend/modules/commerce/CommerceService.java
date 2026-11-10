@@ -16,8 +16,9 @@ import org.springframework.transaction.annotation.Isolation;
 public class CommerceService {
     private final CommerceRepository repository;
     private final boolean demoTopups;
+    private final TopUpChallenges topUps = new TopUpChallenges();
     public CommerceService(CommerceRepository repository,
-        @Value("${app.commerce.demo-topups-enabled:false}") boolean demoTopups) {
+        @Value("${app.commerce.demo-topups-enabled:true}") boolean demoTopups) {
         this.repository = repository; this.demoTopups = demoTopups;
     }
     private Account actor(Authentication authentication, boolean lock) {
@@ -47,13 +48,27 @@ public class CommerceService {
             || !Set.of("newest", "oldest", "amount").contains(sort)) throw new CommerceException(BAD_REQUEST, "Bộ lọc hoặc phân trang không hợp lệ.");
         return repository.transactionPage(user.id(), type, status, page, size, sort);
     }
-    @Transactional
-    public Transaction deposit(Authentication authentication, BigDecimal amount, UUID key) {
-        if (!demoTopups) throw new CommerceException(SERVICE_UNAVAILABLE, "Nạp tiền mô phỏng chỉ bật trong profile phát triển. Chưa tích hợp cổng thanh toán thật.");
-        Account user = actor(authentication, true);
+    private void requireTopUps() {
+        if (!demoTopups) throw new CommerceException(SERVICE_UNAVAILABLE, "Nạp tiền mô phỏng đang tắt trên máy chủ.");
+    }
+    private static BigDecimal depositAmount(BigDecimal amount) {
         if (amount == null || amount.signum() <= 0 || amount.compareTo(new BigDecimal("100000000")) > 0 || amount.scale() > 2)
             throw new CommerceException(BAD_REQUEST, "Số tiền phải lớn hơn 0, không quá 100.000.000 VND và tối đa 2 chữ số thập phân.");
-        BigDecimal value = amount.setScale(2);
+        return amount.setScale(2);
+    }
+    @Transactional
+    public TopUpChallenge createTopUpChallenge(Authentication authentication, BigDecimal amount) {
+        requireTopUps();
+        Account user = actor(authentication, true);
+        return topUps.create(user.id(), depositAmount(amount));
+    }
+    @Transactional
+    public Transaction deposit(Authentication authentication, BigDecimal amount, UUID key, UUID challengeId, String code) {
+        requireTopUps();
+        Account user = actor(authentication, true);
+        BigDecimal value = depositAmount(amount);
+        if (key == null || challengeId == null || !key.equals(challengeId) || code == null || code.isBlank() || code.length() > 32)
+            throw new CommerceException(BAD_REQUEST, "Cần mã xác nhận và đúng yêu cầu QR để nạp tiền.");
         Optional<Transaction> previous = repository.byRequest(user.id(), key);
         if (previous.isPresent()) {
             Transaction transaction = previous.get();
@@ -61,6 +76,7 @@ public class CommerceService {
                 throw new CommerceException(CONFLICT, "Mã yêu cầu đã dùng cho một giao dịch khác.");
             return transaction;
         }
+        topUps.verify(user.id(), value, challengeId, code);
         BigDecimal balance = user.balance().add(value);
         if (balance.precision() - balance.scale() > 17) throw new CommerceException(BAD_REQUEST, "Số dư vượt giới hạn.");
         repository.balance(user.id(), balance);

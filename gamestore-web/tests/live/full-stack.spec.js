@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { money } from "../../src/services/currency.js";
+import { confirmTopUpQr } from "../helpers/topup.js";
 
 test("real browser → JWT API → PostgreSQL: deposit, discounted purchase, review, persistence and revenue", async ({
   page,
@@ -24,8 +25,9 @@ test("real browser → JWT API → PostgreSQL: deposit, discounted purchase, rev
       .filter({
         has: page.getByRole("heading", { name: game.title, exact: true }),
       })
-      .getByRole("button", { name: "Xem chi tiết" })
+      .getByRole("link", { name: "Xem chi tiết" })
       .click();
+    await page.getByRole("button", { name: "Mua game", exact: true }).click();
     await page.getByRole("button", { name: "Xác nhận mua game" }).click();
     await expect(
       page.getByRole("heading", { name: "Đã thêm vào thư viện" }),
@@ -35,10 +37,10 @@ test("real browser → JWT API → PostgreSQL: deposit, discounted purchase, rev
   await page.goto("/wallet");
   await expect(page.getByRole("heading", { name: money("0") })).toBeVisible();
   await page.getByRole("button", { name: "Tiếp tục nạp tiền" }).click();
-  await page.getByRole("button", { name: "Xác nhận nạp", exact: true }).click();
+  await confirmTopUpQr(page);
   await expect(page.getByRole("heading", { name: /500.000/ })).toBeVisible();
   await buy(fixture.garden);
-  await page.getByRole("link", { name: "Mở thư viện", exact: true }).click();
+  await page.getByRole("dialog").getByRole("link", { name: "Mở thư viện", exact: true }).click();
   await page.getByRole("button", { name: "Viết đánh giá" }).click();
   await page.getByLabel("Điểm đánh giá").selectOption("4.5");
   await page

@@ -21,18 +21,20 @@ registrations have the database default balance of zero. The frontend does not
 fall back to a mock wallet if the API fails. Development Demo identities still
 use separate browser-only fixtures and never become authenticated backend users.
 
-For development **test credits**, explicitly enable the local profile:
+QR-based **simulated credits** are enabled by default for this simulation project.
+Set `app.commerce.demo-topups-enabled=false` to disable them. The local profile
+also enables this capability:
 
 ```powershell
 .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
-This enables `POST /wallet/demo-topups`: it writes real IN transactions and balance
-changes in the configured database, but **does not collect or verify bank money**.
-It is disabled by default (503), must remain disabled in production, and does not
-represent a payment-gateway integration. Only authenticated VERIFIED accounts can
-credit their own wallets. Actual bank/PSP callbacks must be implemented separately
-with signed payment verification before enabling production top-ups.
+The wallet creates a random QR, the user scans it and enters its code, then
+`POST /wallet/demo-topups` validates that code before writing an IN transaction
+and balance change. It **does not collect or verify bank money**. Only authenticated
+VERIFIED accounts can credit their own wallets. Codes expire after 10 minutes;
+regenerating a QR invalidates the previous pending code. See
+[QR top-ups](../docs/qr-topups.md) for behavior, retries, limitations and configuration.
 
 No catalog or privileged account fixtures are inserted into the application's
 configured database. Store uses actual AVAILABLE games and their existing
@@ -49,7 +51,8 @@ current role/status from the database, not a caller-supplied user/developer ID.
 | GET | `/state` | Account, visible catalog/promotions, own history/ownership, public reviews |
 | GET | `/wallet` | Own balance and account status |
 | GET | `/transactions` | Own paginated transactions; type/status/sort filters |
-| POST | `/wallet/demo-topups` | Development credit, body `{"amount":"500000.00"}` |
+| POST | `/wallet/demo-topups/challenges` | Create a simulated QR challenge, body `{"amount":"500000.00"}`; no balance change |
+| POST | `/wallet/demo-topups` | Confirm simulated credit with `amount`, `challenge_id`, `code` |
 | POST | `/purchases` | Single-game purchase; `{"game_id":"UUID","expected_amount":"150000.00"}` |
 | PUT | `/games/{gameId}/review` | Create/update own review: `{"rating":4.5,"content":"..."}` |
 | DELETE | `/reviews/{reviewId}` | Delete own review; 204 |
@@ -66,7 +69,9 @@ BigDecimal and HALF_UP rounding once to the database scale. Ratings remain JSON
 numbers with allowed half-step values. Dates are ISO instants. Revenue date
 boundaries are inclusive calendar days in Asia/Ho_Chi_Minh.
 
-For credit/purchase POSTs, provide a UUID **Idempotency-Key** header. Keep the same
+For credit confirmation/purchase POSTs, provide a UUID **Idempotency-Key** header.
+Credit confirmation must use the challenge UUID as its key. Challenge creation does
+not require this header. Keep the same
 key for retries of one user-confirmed action. A successful retry returns the same
 transaction without applying money twice. Reusing the key with different inputs
 returns 409. `expected_amount` is an optional checkout quote guard for older clients;

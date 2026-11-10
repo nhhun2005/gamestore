@@ -1,6 +1,6 @@
 # Quy ước database GameStore
 
-Tài liệu mô tả source hiện tại và schema sau khi áp dụng migration V1–V6. Xem [sơ đồ Class Diagram và UCD](diagrams/Diagrams.drawio).
+Tài liệu mô tả source hiện tại và schema sau khi áp dụng migration V1–V7. Xem [sơ đồ Class Diagram và UCD](diagrams/Diagrams.drawio).
 
 ## Kiểu dữ liệu và cấu hình
 
@@ -17,7 +17,7 @@ Tài liệu mô tả source hiện tại và schema sau khi áp dụng migration
 
 Mỗi user có đúng một role: `USER`, `ADMINISTRATOR`, `DEVELOPER`. Trạng thái user gồm `PENDING`, `VERIFIED`, `BANNED`; mặc định `PENDING`. Xóa tài khoản về mặt nghiệp vụ là chuyển sang `BANNED`, giữ nguyên các quan hệ và lịch sử.
 
-`developer_submissions` giữ quan hệ nhiều yêu cầu trên một user. Use case đăng ký nhà phát triển hiện mới có bảng dữ liệu. Admin có thể đổi role qua API quản lý người dùng.
+`developer_submissions` giữ quan hệ nhiều yêu cầu trên một user. Use case đăng ký nhà phát triển có API/giao diện gửi và xét duyệt đơn; chỉ `VERIFIED USER` được gửi, tối đa một đơn chờ qua service. Admin duyệt thành công đổi role sang `DEVELOPER` trong cùng transaction. V7 được duyệt thêm duy nhất `application_reason TEXT` nullable để lưu lời đăng ký riêng với phản hồi admin trong `reason`; cần áp dụng V7 trước khi dùng chức năng. Xem [đăng ký nhà phát triển](developer-registration.md) để biết API, giới hạn schema và trạng thái áp dụng. Admin vẫn có thể đổi role qua API quản lý người dùng.
 
 ## Game và submission
 
@@ -76,6 +76,7 @@ Mỗi user có đúng một role: `USER`, `ADMINISTRATOR`, `DEVELOPER`. Trạng 
 | `V4__game_drafts_and_submission_revisions.sql` | Tách bản nháp và gửi đơn, revision nội dung, thời gian gửi/xét duyệt |
 | `V5__remove_game_revision_tracking.sql` | Gỡ hai cột revision và index phụ thuộc theo yêu cầu người dùng; không sửa V4 đã áp dụng |
 | `V6__wishlist_promotions_notifications.sql` | Bổ sung thời điểm lưu Wishlist, cập nhật cấu trúc thông báo và các khóa ngoại liên quan |
+| `V7__developer_application_reason.sql` | Thêm lời đăng ký developer riêng với phản hồi admin; đã duyệt và áp dụng ngày 10/11/2026 |
 
 File nằm trong `gamestore-backend/src/main/resources/db/migration`. Khởi động backend sẽ validate lịch sử và áp dụng migration chưa chạy. `baseline-on-migrate=false`, `clean-disabled=true`; không tự baseline schema đã có bảng.
 

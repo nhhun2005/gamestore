@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useCommerce } from "../../components/commerce/context";
 import {
   Artwork,
@@ -7,7 +8,6 @@ import {
   PriceDisplay,
 } from "../../components/commerce/CommerceUI";
 import { cents, priceOf } from "../../services/currency";
-import CheckoutDialog from "../Checkout/CheckoutDialog";
 import "./WishlistPage.css";
 
 const SORTS = {
@@ -20,7 +20,6 @@ const SORTS = {
 export default function WishlistPage() {
   const { state, user, service } = useCommerce();
   const [sort, setSort] = useState("sale");
-  const [selected, setSelected] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
 
@@ -132,12 +131,12 @@ export default function WishlistPage() {
                 </small>
                 <PriceDisplay game={game} promotions={state.promotions} />
                 <div className="commerce-actions">
-                  <button
+                  <Link
                     className="commerce-button primary"
-                    onClick={() => setSelected(game)}
+                    to={`/games/${encodeURIComponent(game.id)}`}
                   >
                     {onSale ? "Mua ngay" : "Xem chi tiết"}
-                  </button>
+                  </Link>
                   <button
                     className="commerce-button"
                     disabled={busyId === game.id}
@@ -150,12 +149,6 @@ export default function WishlistPage() {
             </article>
           ))}
         </div>
-      )}
-      {selected && (
-        <CheckoutDialog
-          game={state.games.find((g) => g.id === selected.id) || selected}
-          close={() => setSelected(null)}
-        />
       )}
     </main>
   );

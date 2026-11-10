@@ -28,7 +28,9 @@ test("real HTTP adapter supplies JWT, idempotency and JSON and refreshes the sha
       calls.push({ url, ...options });
       return new Response(
         JSON.stringify(
-          url.endsWith("/state") ? state() : { id: "saved-transaction" },
+          url.endsWith("/state") ? state() : url.endsWith("/challenges")
+            ? { challenge_id: "550e8400-e29b-41d4-a716-446655440000", amount: "500000.00", code: "GS-ABCD-EFGH", expires_at: new Date(Date.now() + 600000).toISOString() }
+            : { id: "saved-transaction" },
         ),
         { status: 200 },
       );
@@ -40,7 +42,12 @@ test("real HTTP adapter supplies JWT, idempotency and JSON and refreshes the sha
   assert.equal(api.snapshot().users[0].balance, "500000.00");
   assert.equal(api.snapshot().wishlist.length, 1);
   const key = "550e8400-e29b-41d4-a716-446655440000";
-  await api.topUp("500000", key);
+  const qr = await api.createTopUpChallenge("500000");
+  assert.equal(updates, 1); // Creating a QR never changes/refetches the balance.
+  await api.topUp("500000", key, { challenge_id: qr.challenge_id, code: qr.code });
+  const deposit = calls.find((c) => c.url.endsWith("/demo-topups"));
+  assert.equal(deposit.headers["Idempotency-Key"], qr.challenge_id);
+  assert.deepEqual(JSON.parse(deposit.body), { amount: "500000", challenge_id: qr.challenge_id, code: qr.code });
   await api.purchase("game-id", key, "200000.00");
   const post = calls.find((c) => c.url.endsWith("/purchases"));
   assert.equal(post.headers.Authorization, "Bearer actual-token");

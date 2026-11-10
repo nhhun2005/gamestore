@@ -31,6 +31,11 @@ public final class CommerceDtos {
     public record DepositRequest(
         @NotNull @DecimalMin(value = "0", inclusive = false) @DecimalMax("100000000")
         @Digits(integer = 9, fraction = 2) BigDecimal amount) {}
+    public record TopUpChallenge(UUID challenge_id, String amount, String code, String expires_at) {}
+    public record ConfirmDepositRequest(
+        @NotNull @DecimalMin(value = "0", inclusive = false) @DecimalMax("100000000")
+        @Digits(integer = 9, fraction = 2) BigDecimal amount,
+        @NotNull UUID challenge_id, @NotBlank @Size(max = 32) String code) {}
     public record PurchaseRequest(@NotNull UUID game_id, @DecimalMin("0") @Digits(integer=17, fraction=2) BigDecimal expected_amount) {}
     public record ReviewRequest(@NotNull @DecimalMin("1") @DecimalMax("5") BigDecimal rating,
                                 @NotBlank @Size(max = 2000) String content) {}

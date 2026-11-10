@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { createCommerceService } from "../../src/services/commerceService.js";
+import { confirmTopUpQr } from "../helpers/topup.js";
 
 const pixel = "Pixel Valley Farming";
 async function demo(page, name = "Huỳnh") {
@@ -11,7 +12,7 @@ async function topUp(page, amount = "500000") {
   await page.goto("/wallet");
   await page.getByLabel("Số tiền tùy chỉnh (VND)").fill(amount);
   await page.getByRole("button", { name: "Tiếp tục nạp tiền" }).click();
-  await page.getByRole("button", { name: "Xác nhận nạp", exact: true }).click();
+  await confirmTopUpQr(page);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 async function details(page, title) {
@@ -19,11 +20,12 @@ async function details(page, title) {
   await page
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: title, exact: true }) })
-    .getByRole("button", { name: "Xem chi tiết" })
+    .getByRole("link", { name: "Xem chi tiết" })
     .click();
 }
 async function purchase(page, title) {
   await details(page, title);
+  await page.getByRole("button", { name: "Mua game", exact: true }).click();
   await page.getByRole("button", { name: "Xác nhận mua game" }).click();
   await expect(
     page.getByRole("heading", { name: "Đã thêm vào thư viện" }),
@@ -58,7 +60,7 @@ test("all seven use cases: consistent wallet, library, reviews, history and scop
   await topUp(page);
   await expect(page.getByRole("heading", { name: /600.000/ })).toBeVisible();
   await purchase(page, pixel);
-  await page.getByRole("link", { name: "Mở thư viện", exact: true }).click();
+  await page.getByRole("dialog").getByRole("link", { name: "Mở thư viện", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: pixel, exact: true }),
   ).toBeVisible();
@@ -151,6 +153,7 @@ test("mobile, validation, insufficient funds, free/duplicate/unavailable purchas
     page.getByRole("button", { name: "Tiếp tục nạp tiền" }),
   ).toBeDisabled();
   await details(page, pixel);
+  await page.getByRole("button", { name: "Mua game", exact: true }).click();
   await expect(page.getByText("Số dư không đủ để mua trò chơi.")).toBeVisible();
   await page.keyboard.press("Escape");
   await details(page, "Dự án sắp ra mắt");
@@ -160,6 +163,7 @@ test("mobile, validation, insufficient funds, free/duplicate/unavailable purchas
   await page
     .getByRole("button", { name: "Thêm miễn phí vào thư viện" })
     .click();
+  await page.getByRole("dialog").getByRole("button", { name: "Thêm miễn phí vào thư viện" }).click();
   await page.getByRole("button", { name: "Đóng hộp thoại" }).click();
   await details(page, "Celeste");
   await expect(page.getByText("Bạn đã sở hữu trò chơi này.")).toBeVisible();
@@ -171,7 +175,7 @@ test("mobile, validation, insufficient funds, free/duplicate/unavailable purchas
     page.getByRole("heading", { name: "Celeste", exact: true }),
   ).toBeVisible();
   await page.goBack();
-  await expect(page).toHaveURL(/store/);
+  await expect(page).toHaveURL(/\/games\//);
   await page.goForward();
   await expect(page).toHaveURL(/library/);
   expect(
@@ -240,8 +244,12 @@ async function interceptAuth(page, data, status = 200, topups = true) {
           })),
           capabilities: { demo_topups: topups },
         };
-      } else if (path.endsWith("/wallet/demo-topups"))
-        body = await commerce.topUp(route.request().postDataJSON().amount);
+      } else if (path.endsWith("/wallet/demo-topups/challenges"))
+        body = await commerce.createTopUpChallenge(route.request().postDataJSON().amount);
+      else if (path.endsWith("/wallet/demo-topups")) {
+        const proof = route.request().postDataJSON();
+        body = await commerce.topUp(proof.amount, route.request().headers()["idempotency-key"], proof);
+      }
       else if (path.endsWith("/purchases"))
         body = await commerce.purchase(route.request().postDataJSON().game_id);
       else if (path.endsWith("/revenue")) body = await commerce.revenue();
@@ -289,7 +297,7 @@ test("existing JWT login returns to requested page, commerce survives reload/log
   await page.reload();
   await expect(page.getByRole("heading", { name: /600.000/ })).toBeVisible();
   await purchase(page, pixel);
-  await page.getByRole("link", { name: "Mở thư viện" }).click();
+  await page.getByRole("dialog").getByRole("link", { name: "Mở thư viện" }).click();
   await page.getByRole("button", { name: "Đăng xuất" }).click();
   await expect(page).toHaveURL(/login/);
   expect(

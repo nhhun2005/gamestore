@@ -1,19 +1,17 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useCommerce } from "../../components/commerce/context";
-import { useOperation } from "../../components/commerce/useOperation";
+import TopUpQrDialog from "./TopUpQrDialog";
 import {
-  Modal,
   PageHeader,
   TransactionTable,
 } from "../../components/commerce/CommerceUI";
 import { cents, money } from "../../services/currency";
 export default function WalletPage() {
-  const { state, user, service, notify } = useCommerce();
+  const { state, user } = useCommerce();
   const [amount, setAmount] = useState("500000");
   const [confirm, setConfirm] = useState(false);
-  const operation = useOperation();
-  const requestKey = useRef("");
+  const [pendingAmount, setPendingAmount] = useState("");
   const topupsEnabled =
     user.source === "demo" || state.capabilities?.demo_topups === true;
   let valid = false;
@@ -57,7 +55,7 @@ export default function WalletPage() {
             onSubmit={(e) => {
               e.preventDefault();
               if (valid && topupsEnabled) {
-                requestKey.current = crypto.randomUUID();
+                setPendingAmount(amount);
                 setConfirm(true);
               }
             }}
@@ -82,7 +80,7 @@ export default function WalletPage() {
             </p>
             <button
               className="commerce-button primary"
-              disabled={!valid || operation.busy || !topupsEnabled}
+              disabled={!valid || !topupsEnabled}
             >
               Tiếp tục nạp tiền
             </button>
@@ -91,8 +89,8 @@ export default function WalletPage() {
             {user.source === "demo"
               ? "DEMO · Chỉ cập nhật dữ liệu mô phỏng, không kết nối ngân hàng hoặc thu tiền thật."
               : topupsEnabled
-                ? "Nạp tiền thử nghiệm: số dư được ghi vào database, không thu tiền ngân hàng thật."
-                : "Chưa tích hợp cổng thanh toán. Nạp tiền thử nghiệm chỉ bật khi backend chạy profile local."}
+                ? "Nạp tiền bằng QR mô phỏng: xác nhận mã để cộng số dư, không chuyển tiền ngân hàng thật."
+                : "Nạp tiền mô phỏng đang tắt trên máy chủ."}
           </p>
         </section>
       </div>
@@ -106,40 +104,7 @@ export default function WalletPage() {
           .slice(0, 5)}
         games={state.games}
       />
-      {confirm && (
-        <Modal
-          title="Xác nhận nạp tiền DEMO"
-          close={() => setConfirm(false)}
-          {...operation}
-        >
-          <p>
-            Thêm <strong>{money(amount)}</strong>{" "}
-            {user.source === "demo"
-              ? "vào ví mô phỏng?"
-              : "vào số dư database bằng khoản nạp thử nghiệm?"}
-          </p>
-          <p>Không có khoản thanh toán thật nào được thực hiện.</p>
-          <button
-            className="commerce-button primary"
-            disabled={operation.busy}
-            onClick={() =>
-              operation.run(
-                () => service.topUp(amount, requestKey.current),
-                () => {
-                  setConfirm(false);
-                  notify(
-                    user.source === "demo"
-                      ? "Đã nạp tiền vào ví mô phỏng."
-                      : "Đã ghi nhận khoản nạp thử nghiệm vào database.",
-                  );
-                },
-              )
-            }
-          >
-            {operation.busy ? "Đang xử lý…" : "Xác nhận nạp"}
-          </button>
-        </Modal>
-      )}
+      {confirm && <TopUpQrDialog amount={pendingAmount} close={() => setConfirm(false)} />}
     </main>
   );
 }

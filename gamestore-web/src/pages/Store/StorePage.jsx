@@ -1,6 +1,5 @@
 import GameCard from "../../components/GameCard/GameCard";
 import { useState } from "react";
-import CheckoutDialog from "../Checkout/CheckoutDialog";
 import { Artwork } from "../../components/commerce/CommerceUI";
 
 const FEATURED_GAMES = [
@@ -21,7 +20,6 @@ const FEATURED_GAMES = [
 ];
 
 function StorePage({ user, games = FEATURED_GAMES, promotions = [] }) {
-  const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   return (
     <main className="steam-main-content">
@@ -77,23 +75,12 @@ function StorePage({ user, games = FEATURED_GAMES, promotions = [] }) {
               isOwned={false}
               game={game.cover_image_url !== undefined ? game : undefined}
               promotions={promotions}
-              onActionClick={
-                game.cover_image_url !== undefined
-                  ? () => setSelected(game)
-                  : undefined
-              }
             />
           ))}
       </div>
       {!games.some((game) =>
         game.title.toLowerCase().includes(search.toLowerCase()),
       ) && <p className="commerce-empty">Không tìm thấy trò chơi.</p>}
-      {selected && (
-        <CheckoutDialog
-          game={games.find((game) => game.id === selected.id) || selected}
-          close={() => setSelected(null)}
-        />
-      )}
     </main>
   );
 }

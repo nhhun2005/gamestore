@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { downloadGame } from "../../services/gameDownload";
 import { useCommerce } from "../../components/commerce/context";
 import {
   Artwork,
@@ -13,6 +15,7 @@ export default function LibraryPage({ user }) {
   const [reviewed, setReviewed] = useState(false);
   const [selection, setSelection] = useState("");
   const [dialog, setDialog] = useState("");
+  const [downloadError, setDownloadError] = useState("");
   const ownerships = state.game_bought.filter((p) => p.user_id === user.id);
   const dateOf = (id) =>
     state.transactions.find(
@@ -84,6 +87,16 @@ export default function LibraryPage({ user }) {
               <Artwork game={game} large />
               <div className="library-detail-content">
                 <h2>{game.title}</h2>
+                <div className="commerce-actions">
+                  <button className="commerce-button primary" onClick={() => {
+                    if (!ownerships.some((entry) => entry.game_id === game.id)) return;
+                    setDownloadError("");
+                    try { downloadGame(game.title); }
+                    catch { setDownloadError("Không thể tải game. Vui lòng thử lại."); }
+                  }}>Tải game</button>
+                  <Link className="commerce-button" to={`/games/${encodeURIComponent(game.id)}`}>Xem chi tiết</Link>
+                </div>
+                {downloadError && <p className="commerce-error" role="alert">{downloadError}</p>}
                 <p>{game.description}</p>
                 <p className="commerce-note">
                   Đã sở hữu từ{" "}

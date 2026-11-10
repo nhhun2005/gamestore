@@ -24,7 +24,7 @@ app:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   commerce:
-    demo-topups-enabled: false
+    demo-topups-enabled: true # QR simulation only; set false to disable simulated credits.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}
 cloudinary:

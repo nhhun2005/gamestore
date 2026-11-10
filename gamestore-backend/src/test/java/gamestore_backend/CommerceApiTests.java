@@ -75,7 +75,17 @@ class CommerceApiTests {
         return json.readTree(response.body());
     }
     String buy(UUID gameId) { return "{\"game_id\":\"" + gameId + "\"}"; }
-    void fund() throws Exception { tree(send("POST", "/api/commerce/wallet/demo-topups", buyer, "{\"amount\":\"500000\"}", UUID.randomUUID()), 201); }
+    JsonNode topUpQr(String amount) throws Exception {
+        return tree(send("POST", "/api/commerce/wallet/demo-topups/challenges", buyer,
+            json.writeValueAsString(Map.of("amount", amount)), null), 201);
+    }
+    String topUpBody(JsonNode qr, String amount) throws Exception {
+        return json.writeValueAsString(Map.of("amount", amount, "challenge_id", qr.path("challenge_id").asText(), "code", qr.path("code").asText()));
+    }
+    void fund() throws Exception {
+        JsonNode qr = topUpQr("500000");
+        tree(send("POST", "/api/commerce/wallet/demo-topups", buyer, topUpBody(qr, "500000"), UUID.fromString(qr.path("challenge_id").asText())), 201);
+    }
     @Test void realWalletPurchaseReviewAndHistoryRemainConsistent() throws Exception {
         fund();
         JsonNode transaction = tree(send("POST", "/api/commerce/purchases", buyer, buy(game), UUID.randomUUID()), 201);
@@ -95,12 +105,13 @@ class CommerceApiTests {
         assertEquals("BUY", history.path("items").get(0).path("type").asText());
     }
     @Test void retryKeysAreIdempotentAndCannotBeReusedForDifferentInputs() throws Exception {
-        UUID key = UUID.randomUUID();
+        JsonNode qr = topUpQr("500000");
+        UUID key = UUID.fromString(qr.path("challenge_id").asText());
         String path = "/api/commerce/wallet/demo-topups";
-        JsonNode first = tree(send("POST", path, buyer, "{\"amount\":500000}", key), 201);
-        JsonNode second = tree(send("POST", path, buyer, "{\"amount\":500000}", key), 201);
+        JsonNode first = tree(send("POST", path, buyer, topUpBody(qr, "500000"), key), 201);
+        JsonNode second = tree(send("POST", path, buyer, topUpBody(qr, "500000"), key), 201);
         assertEquals(first.path("id"), second.path("id"));
-        assertEquals(409, send("POST", path, buyer, "{\"amount\":200000}", key).statusCode());
+        assertEquals(409, send("POST", path, buyer, topUpBody(qr, "200000"), key).statusCode());
         assertEquals(409, send("POST", "/api/commerce/purchases", buyer, buy(game), key).statusCode());
         UUID purchaseKey = UUID.randomUUID();
         first = tree(send("POST", "/api/commerce/purchases", buyer, buy(game), purchaseKey), 201);

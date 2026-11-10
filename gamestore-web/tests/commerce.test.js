@@ -32,9 +32,13 @@ function fixture() {
     options: { storage, currentUser: () => current, delay: 0 },
   };
 }
+async function fund(service, amount) {
+  const qr = await service.createTopUpChallenge(amount);
+  return service.topUp(amount, qr.challenge_id, { challenge_id: qr.challenge_id, code: qr.code });
+}
 test("one consistent deposit, purchase, review, revenue and persistence journey", async () => {
   const { service: s, storage, select, options } = fixture();
-  await s.topUp("500000");
+  await fund(s, "500000");
   await s.purchase(gameId(3));
   assert.equal(s.snapshot().users[0].balance, "435000.00");
   assert.equal(s.snapshot().transactions[0].type, "BUY");
@@ -93,8 +97,10 @@ test("validation, insufficient funds, unavailable, missing, duplicate and free g
 });
 test("duplicate submission and identity changes cannot apply a second or wrong-user operation", async () => {
   const { service: s, select } = fixture();
-  const first = s.topUp("500000");
-  await assert.rejects(s.topUp("500000"), /đang được xử lý/);
+  const qr = await s.createTopUpChallenge("500000");
+  const proof = { challenge_id: qr.challenge_id, code: qr.code };
+  const first = s.topUp("500000", qr.challenge_id, proof);
+  await assert.rejects(s.topUp("500000", qr.challenge_id, proof), /đang được xử lý/);
   await first;
   assert.equal(s.snapshot().users[0].balance, "600000.00");
   const changing = s.purchase(gameId(3));
@@ -118,6 +124,41 @@ test("review ownership, author, content and half-step rating rules", async () =>
   await s.deleteReview(review.id);
   assert.equal(s.snapshot().games[4].rating, null);
 });
+
+test("QR topups bind code to account and amount, invalidate old QR and credit only once", async () => {
+  const { service: s, select } = fixture();
+  const qr = await s.createTopUpChallenge("500000");
+  assert.equal(s.snapshot().users[0].balance, "100000.00");
+  assert.equal(s.snapshot().transactions.length, 0);
+  await assert.rejects(s.topUp("500000"), /mã xác nhận/);
+  await assert.rejects(s.topUp("500000", qr.challenge_id, { challenge_id: qr.challenge_id, code: "WRONG" }), /không đúng/);
+  await assert.rejects(s.topUp("100", qr.challenge_id, { challenge_id: qr.challenge_id, code: qr.code }), /Số tiền không khớp/);
+  select(demoUsers[1]);
+  await assert.rejects(s.topUp("500000", qr.challenge_id, { challenge_id: qr.challenge_id, code: qr.code }), /không còn hiệu lực/);
+  select(demoUsers[0]);
+  const fresh = await s.createTopUpChallenge("500000");
+  await assert.rejects(s.topUp("500000", qr.challenge_id, { challenge_id: qr.challenge_id, code: qr.code }), /không còn hiệu lực/);
+  const proof = { challenge_id: fresh.challenge_id, code: fresh.code };
+  const first = await s.topUp("500000", fresh.challenge_id, proof);
+  const retry = await s.topUp("500000", fresh.challenge_id, proof);
+  assert.equal(first.id, retry.id);
+  assert.equal(s.snapshot().users[0].balance, "600000.00");
+  assert.equal(s.snapshot().transactions.length, 1);
+});
+
+test("expired and repeatedly incorrect QR codes cannot credit the demo wallet", async () => {
+  let now = Date.now();
+  const s = createCommerceService({ currentUser: () => demoUsers[0], delay: 0, now: () => now });
+  const qr = await s.createTopUpChallenge("100");
+  now += 600000;
+  await assert.rejects(s.topUp("100", qr.challenge_id, { challenge_id: qr.challenge_id, code: qr.code }), /hết hạn/);
+  const fresh = await s.createTopUpChallenge("100");
+  for (let i = 0; i < 4; i++) await assert.rejects(s.topUp("100", fresh.challenge_id, { challenge_id: fresh.challenge_id, code: "WRONG" }), /không đúng/);
+  await assert.rejects(s.topUp("100", fresh.challenge_id, { challenge_id: fresh.challenge_id, code: "WRONG" }), /5 lần/);
+  await assert.rejects(s.topUp("100", fresh.challenge_id, { challenge_id: fresh.challenge_id, code: fresh.code }), /không còn hiệu lực/);
+  assert.equal(s.snapshot().users[0].balance, "100000.00");
+  assert.equal(s.snapshot().transactions.length, 0);
+});
 test("service roles, anonymous and expired sessions and disabled production service", async () => {
   const { service: s, select, options } = fixture();
   await assert.rejects(s.revenue(), /quyền/);
@@ -138,7 +179,7 @@ test("empty data, reset, malformed storage, failed persistence and real account 
   assert.deepEqual(await s.revenue(), []);
   select({ id: "actual-account", username: "Actual User", role: "USER" });
   await s.prepareAccount();
-  await s.topUp("0.05");
+  await fund(s, "0.05");
   assert.equal(
     s.snapshot().users.find((u) => u.id === "actual-account").balance,
     "100000.05",
@@ -168,7 +209,7 @@ test("empty data, reset, malformed storage, failed persistence and real account 
     },
   });
   select(demoUsers[0]);
-  await assert.rejects(broken.topUp("500000"), /Không thể lưu/);
+  await assert.rejects(fund(broken, "500000"), /Không thể lưu/);
   assert.equal(broken.snapshot().users[0].balance, "100000.00");
 });
 test("decimal-safe money, fractional discounts, disabled promotion and Vietnamese dates", () => {

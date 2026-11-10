@@ -8,6 +8,7 @@ async function setup(page, role = "ADMINISTRATOR") {
   let genres = [{ id: "action", name: "Hành động", description: "Nhanh và mạnh", game_count: 1 }, { id: "rpg", name: "Nhập vai", description: "", game_count: 1 }];
   const games = [{ id: "game", title: "Trò chơi thử nghiệm", status: "HIDDEN", genre_ids: ["action", "rpg"] }];
   let sequence = 0;
+  await page.route("**/api/commerce/notifications", route => route.fulfill({ json: { items: [], unread_count: 0 } }));
   await page.route("**/api/commerce/state", route => route.fulfill({ json: { current_user: user, users: [], games: [], promotions: [], transactions: [], game_bought: [], reviews: [], capabilities: {} } }));
   await page.route("**/api/catalog/manage", route => route.fulfill({ json: { games: [], genres: [], developers: [] } }));
   await page.route("**/api/admin/genres**", async route => {

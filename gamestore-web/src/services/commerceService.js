@@ -91,6 +91,7 @@ export function createCommerceService({
   currentUser = () => null,
   enabled = true,
   delay = 150,
+  now = () => Date.now(),
 } = {}) {
   let state = createSeed();
   try {
@@ -102,6 +103,7 @@ export function createCommerceService({
     /* Fresh state after incompatible or corrupt storage. */
   }
   let busy = false;
+  const topUpChallenges = new Map();
   const listeners = new Set();
   const commit = (draft) => {
     try {
@@ -189,15 +191,53 @@ export function createCommerceService({
         });
       commit(draft);
     },
-    async topUp(amount) {
+    async createTopUpChallenge(amount) {
+      if (!enabled) throw Error("API thương mại chưa được tích hợp. Mô phỏng chỉ khả dụng trên dev server.");
+      const user = actor();
+      const account = state.users.find((u) => u.id === user.id);
+      if (!account || account.status !== "VERIFIED") throw Error("Tài khoản chưa được xác minh hoặc đã bị khóa.");
+      const value = cents(amount);
+      if (value <= 0n || value > 10000000000n) throw Error("Số tiền nạp phải lớn hơn 0 và không quá 100.000.000 ₫.");
+      for (const [id, entry] of topUpChallenges) if (Date.parse(entry.expires_at) <= now()) topUpChallenges.delete(id);
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      const letters = Array.from(crypto.getRandomValues(new Uint8Array(8)), (n) => alphabet[n % alphabet.length]).join("");
+      const challenge = { challenge_id: crypto.randomUUID(), amount: decimal(value), code: `GS-${letters.slice(0, 4)}-${letters.slice(4)}`, expires_at: new Date(now() + 600000).toISOString() };
+      topUpChallenges.set(user.id, { ...challenge, attempts: 0 });
+      return { ...challenge };
+    },
+    async topUp(amount, key, proof = {}) {
       return mutate((draft, user, account) => {
         const value = cents(amount);
         if (value <= 0n || value > 10000000000n)
           throw Error("Số tiền nạp phải lớn hơn 0 và không quá 100.000.000 ₫.");
+        if (!key || key !== proof.challenge_id || typeof proof.code !== "string" || !proof.code.trim() || proof.code.length > 32)
+          throw Error("Cần mã xác nhận và đúng yêu cầu QR để nạp tiền.");
+        const previous = draft.transactions.find((t) => t.user_id === user.id && t.idempotency_key === key);
+        if (previous) {
+          if (previous.type !== "IN" || cents(previous.amount) !== value) throw Error("Mã yêu cầu đã dùng cho một giao dịch khác.");
+          return previous;
+        }
+        const challenge = topUpChallenges.get(user.id);
+        if (!challenge || challenge.challenge_id !== key) throw Error("Mã QR không còn hiệu lực. Vui lòng tạo QR mới.");
+        if (Date.parse(challenge.expires_at) <= now()) {
+          topUpChallenges.delete(user.id);
+          throw Error("Mã QR đã hết hạn. Vui lòng tạo QR mới.");
+        }
+        if (cents(challenge.amount) !== value) throw Error("Số tiền không khớp với mã QR. Vui lòng tạo QR mới.");
+        const normalize = (code) => code.trim().replace(/[- ]/g, "").toUpperCase();
+        if (normalize(proof.code) !== normalize(challenge.code)) {
+          if (++challenge.attempts >= 5) {
+            topUpChallenges.delete(user.id);
+            throw Error("Đã nhập sai mã 5 lần. Vui lòng tạo QR mới.");
+          }
+          throw Error("Mã xác nhận không đúng. Vui lòng quét QR và nhập lại.");
+        }
         if (cents(account.balance) + value > 99999999999999n)
           throw Error("Số dư vượt giới hạn mô phỏng.");
         account.balance = decimal(cents(account.balance) + value);
-        return transaction(draft, user, "IN", decimal(value));
+        const result = transaction(draft, user, "IN", decimal(value));
+        result.idempotency_key = key;
+        return result;
       });
     },
     async purchase(gameId) {
@@ -315,13 +355,15 @@ export function createCommerceService({
         .map((t) => ({ ...t }));
     },
     async reset() {
-      return mutate((draft) => {
+      const result = await mutate((draft) => {
         const fresh = createSeed();
         for (const user of draft.users)
           if (!fresh.users.some((u) => u.id === user.id))
             fresh.users.push({ ...user, balance: "100000.00" });
         Object.assign(draft, fresh);
       });
+      topUpChallenges.clear();
+      return result;
     },
   };
 }

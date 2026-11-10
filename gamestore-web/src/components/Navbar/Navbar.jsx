@@ -10,6 +10,7 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
     ["wallet", "Ví"],
     ["transactions", "Giao dịch"],
   ];
+  if (user?.role === "USER") pages.push(["developer/register", "Đăng ký nhà phát triển"]);
   if (user?.role === "DEVELOPER")
     pages.push(
       ["manage-games", "Quản lý trò chơi"],
@@ -18,6 +19,7 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
   if (user?.role === "ADMINISTRATOR")
     pages.push(
       ["manage-users", "Quản lý người dùng"],
+      ["admin/developers", "Đơn đăng ký nhà phát triển"],
       ["admin/games", "Quản lý trò chơi"],
       ["admin/promotions", "Khuyến mãi"],
       ["admin/revenue", "Doanh thu"],

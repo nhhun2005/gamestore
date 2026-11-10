@@ -16,7 +16,7 @@
   border-radius: 3px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
-.wishlist-card .game-art { height: 100%; min-height: 130px; }
+.wishlist-card .game-art { width: 100%; min-width: 0; height: 100%; min-height: 130px; aspect-ratio: auto; }
 .wishlist-card-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .wishlist-card-body h3 { margin: 0; overflow-wrap: anywhere; }
 .wishlist-card-body small { color: #94acbf; }
@@ -34,5 +34,5 @@
 }
 @media (max-width: 520px) {
   .wishlist-card { grid-template-columns: 1fr; }
-  .wishlist-card .game-art { min-height: 150px; }
+  .wishlist-card .game-art { min-height: 150px; height: auto; aspect-ratio: 460 / 215; }
 }

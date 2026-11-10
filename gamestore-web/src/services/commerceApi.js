@@ -98,10 +98,13 @@ export function createHttpCommerceService({
       return () => listeners.delete(fn);
     },
     prepareAccount,
-    topUp(amount, key = crypto.randomUUID()) {
+    createTopUpChallenge(amount) {
+      return request("/wallet/demo-topups/challenges", { method: "POST", body: { amount } });
+    },
+    topUp(amount, key, proof = {}) {
       return mutation("/wallet/demo-topups", {
         method: "POST",
-        body: { amount },
+        body: { amount, challenge_id: proof.challenge_id, code: proof.code },
         key,
       });
     },

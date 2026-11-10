@@ -66,6 +66,10 @@
   margin-bottom: 8px;
 }
 
+.game-card-title a { color: inherit; }
+.game-card-title a:hover { color: #66c0f4; }
+.game-card-meta > a.steam-auth-btn { text-align: center; }
+
 .game-card-meta {
   display: flex;
   align-items: center;
