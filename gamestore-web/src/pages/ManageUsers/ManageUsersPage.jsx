@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import "./ManageUsersPage.css";
 
-const API_BASE_URL = "http://localhost:8080/api/admin/users";
+const API_BASE_URL = `${import.meta.env?.VITE_API_BASE_URL || "http://localhost:8080/api"}/admin/users`;
 const TOKEN_KEY = "steam_jwt_token";
 
-const ROLES = ["USER", "DEVELOPER", "ADMINISTRATOR"];
+const ROLES = ["USER", "DEVELOPER"];
 const STATUSES = ["PENDING", "VERIFIED", "BANNED"];
 
 function ManageUsersPage({ user }) {
@@ -25,7 +25,15 @@ function ManageUsersPage({ user }) {
       if (!res.ok) {
         throw new Error("Không thể tải danh sách người dùng từ máy chủ.");
       }
-      setUsers(await res.json());
+      const data = await res.json();
+      // Không nhìn thấy những admin khác (chỉ thấy bản thân và người dùng cấp thấp hơn)
+      const visibleUsers = data.filter(
+        (item) =>
+          item.role !== "ADMINISTRATOR" ||
+          item.id === user?.id ||
+          item.username?.toLowerCase() === user?.username?.toLowerCase(),
+      );
+      setUsers(visibleUsers);
     } catch (err) {
       setError(err.message);
     } finally {

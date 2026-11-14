@@ -156,13 +156,6 @@ function Application() {
         ) : (
           <LoginPage onAuthSuccess={authSuccess} onNavigate={navigatePage} />
         )}
-        {import.meta.env.DEV && (
-          <div className="dev-auth-entry">
-            <Link to="/demo" state={location.state}>
-              Thử Demo khi backend chưa sẵn sàng →
-            </Link>
-          </div>
-        )}
       </>
     );
   const demoPage =

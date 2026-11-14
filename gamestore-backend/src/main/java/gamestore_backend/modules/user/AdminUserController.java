@@ -43,17 +43,20 @@ public class AdminUserController {
     public record UpdateStatusRequest(UserStatus status) {
     }
 
-    // 1. Lấy danh sách toàn bộ người dùng
+    // 1. Lấy danh sách toàn bộ người dùng (trừ các Admin khác)
     @GetMapping
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
+    public ResponseEntity<List<UserResponse>> getAllUsers(Authentication authentication) {
+        String currentUsername = authentication != null ? authentication.getName() : null;
         List<UserResponse> users = userRepository.findAll()
                 .stream()
+                .filter(user -> user.getRole() != Role.ADMINISTRATOR
+                        || (currentUsername != null && user.getUsername().equalsIgnoreCase(currentUsername)))
                 .map(UserResponse::fromEntity)
                 .toList();
         return ResponseEntity.ok(users);
     }
 
-    // 2. Cập nhật Role của người dùng khác
+    // 2. Cập nhật Role của người dùng khác (chỉ áp dụng cho người thấp cấp hơn và gán thành USER hoặc DEVELOPER)
     @PutMapping("/{id}/role")
     public ResponseEntity<?> updateUserRole(
             @PathVariable UUID id,
@@ -62,6 +65,12 @@ public class AdminUserController {
 
         if (req.role() == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "Role không hợp lệ."));
+        }
+
+        // Chỉ cho phép cập nhật vai trò thành USER hoặc DEVELOPER
+        if (req.role() != Role.USER && req.role() != Role.DEVELOPER) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Chỉ được phép cập nhật vai trò thành USER hoặc DEVELOPER."));
         }
 
         Optional<User> userOpt = userRepository.findById(id);
@@ -73,9 +82,15 @@ public class AdminUserController {
         User targetUser = userOpt.get();
 
         // Không cho phép Admin tự đổi role của chính mình
-        if (targetUser.getUsername().equalsIgnoreCase(authentication.getName())) {
+        if (authentication != null && targetUser.getUsername().equalsIgnoreCase(authentication.getName())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Bạn không thể tự thay đổi vai trò của chính mình."));
+        }
+
+        // Chỉ được phép cập nhật role của những người thấp cấp hơn (không được chỉnh role của Admin khác)
+        if (targetUser.getRole() == Role.ADMINISTRATOR) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn chỉ được phép cập nhật vai trò của những người cấp thấp hơn."));
         }
 
         targetUser.setRole(req.role());
@@ -104,9 +119,15 @@ public class AdminUserController {
         User targetUser = userOpt.get();
 
         // Không cho phép Admin tự chỉnh status của chính mình
-        if (targetUser.getUsername().equalsIgnoreCase(authentication.getName())) {
+        if (authentication != null && targetUser.getUsername().equalsIgnoreCase(authentication.getName())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Bạn không thể tự thay đổi trạng thái của chính mình."));
+        }
+
+        // Không cho phép thay đổi status của Admin khác
+        if (targetUser.getRole() == Role.ADMINISTRATOR) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn không thể thay đổi trạng thái của quản trị viên khác."));
         }
 
         targetUser.setStatus(req.status());
