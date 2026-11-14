@@ -28,6 +28,7 @@ import TransactionsPage from "./pages/Transactions/TransactionsPage";
 import RevenuePage from "./pages/Revenue/RevenuePage";
 import DeveloperRegistrationPage from "./pages/DeveloperRegistration/DeveloperRegistrationPage";
 import AdminDeveloperSubmissionsPage from "./pages/DeveloperRegistration/AdminDeveloperSubmissionsPage";
+import VerifyEmailPage from "./pages/VerifyEmail/VerifyEmailPage";
 import { session, demoUsers } from "./services/session";
 import { commerceGateway as commerceService } from "./services/commerceGateway";
 import { CommerceContext } from "./components/commerce/context";
@@ -41,7 +42,7 @@ const returnPath = (path) =>
   typeof path === "string" &&
   path.startsWith("/") &&
   !path.startsWith("//") &&
-  !["/login", "/register", "/demo"].includes(path)
+  !["/login", "/register", "/demo", "/verify"].includes(path)
     ? path
     : "/store";
 function Application() {
@@ -237,6 +238,7 @@ function Application() {
           />
           <Route path="/login" element={authPage(false)} />
           <Route path="/register" element={authPage(true)} />
+          <Route path="/verify" element={<VerifyEmailPage onNavigate={navigatePage} />} />
           {import.meta.env.DEV && <Route path="/demo" element={demoPage} />}
           <Route
             path="/store"

@@ -1,5 +1,6 @@
 package gamestore_backend.modules.user;
 
+import java.time.Instant;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -34,7 +35,13 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UserStatus status = UserStatus.VERIFIED; // Hoặc UserStatus.VERIFIED
+    private UserStatus status = UserStatus.PENDING;
+
+    @Column(name = "verification_token")
+    private UUID verificationToken;
+
+    @Column(name = "verification_token_expiry")
+    private Instant verificationTokenExpiry;
 
     public User() {
     }
@@ -93,5 +100,21 @@ public class User {
 
     public void setStatus(UserStatus status) {
         this.status = status;
+    }
+
+    public UUID getVerificationToken() {
+        return verificationToken;
+    }
+
+    public void setVerificationToken(UUID verificationToken) {
+        this.verificationToken = verificationToken;
+    }
+
+    public Instant getVerificationTokenExpiry() {
+        return verificationTokenExpiry;
+    }
+
+    public void setVerificationTokenExpiry(Instant verificationTokenExpiry) {
+        this.verificationTokenExpiry = verificationTokenExpiry;
     }
 }

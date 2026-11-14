@@ -2,7 +2,9 @@ import { useState } from "react";
 import { API_BASE_URL } from "../../utils/auth";
 import "../Login/Auth.css";
 
-function RegisterPage({ onAuthSuccess, onNavigate }) {
+const RESEND_API = `${import.meta.env?.VITE_API_BASE_URL || "http://localhost:8080/api"}/auth`;
+
+function RegisterPage({ onNavigate }) {
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -11,6 +13,10 @@ function RegisterPage({ onAuthSuccess, onNavigate }) {
   });
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +43,9 @@ function RegisterPage({ onAuthSuccess, onNavigate }) {
       if (!res.ok) {
         setErrorMsg(data.message || "Đăng ký thất bại.");
       } else {
-        onAuthSuccess(data);
+        // Hiển thị thông báo kiểm tra email thay vì tự đăng nhập
+        setRegistered(true);
+        setRegisteredEmail(form.email);
       }
     } catch {
       setErrorMsg(
@@ -47,6 +55,72 @@ function RegisterPage({ onAuthSuccess, onNavigate }) {
       setLoading(false);
     }
   };
+
+  const handleResend = async () => {
+    setResending(true);
+    setResendMsg("");
+    try {
+      const res = await fetch(`${RESEND_API}/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+      const data = await res.json();
+      setResendMsg(data.message || "Đã gửi lại email xác thực.");
+    } catch {
+      setResendMsg("Không thể kết nối tới máy chủ.");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // Sau khi đăng ký thành công → hiển thị thông báo kiểm tra email
+  if (registered) {
+    return (
+      <div className="steam-auth-wrapper">
+        <div className="steam-auth-card" style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}>📧</div>
+          <h1 className="steam-auth-title" style={{ color: "#66c0f4" }}>
+            Kiểm tra email của bạn
+          </h1>
+          <p style={{ color: "#c7d5e0", fontSize: "16px", lineHeight: 1.6 }}>
+            Chúng tôi đã gửi email xác thực đến{" "}
+            <strong style={{ color: "#66c0f4" }}>{registeredEmail}</strong>.
+            <br />
+            Vui lòng mở email và nhấn vào link xác thực để kích hoạt tài khoản.
+          </p>
+          <p style={{ color: "#8f98a0", fontSize: "13px", marginTop: "16px" }}>
+            Không nhận được email? Kiểm tra thư mục Spam hoặc nhấn nút bên dưới
+            để gửi lại.
+          </p>
+          <button
+            className="steam-submit-btn"
+            style={{ marginTop: "16px", background: "#32353c" }}
+            disabled={resending}
+            onClick={handleResend}
+          >
+            {resending ? "Đang gửi lại..." : "Gửi lại email xác thực"}
+          </button>
+          {resendMsg && (
+            <p
+              style={{
+                color: "#a4d007",
+                fontSize: "14px",
+                marginTop: "12px",
+              }}
+            >
+              {resendMsg}
+            </p>
+          )}
+          <div className="steam-auth-footer" style={{ justifyContent: "center" }}>
+            <span className="steam-link" onClick={() => onNavigate("login")}>
+              Quay lại đăng nhập
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="steam-auth-wrapper">
