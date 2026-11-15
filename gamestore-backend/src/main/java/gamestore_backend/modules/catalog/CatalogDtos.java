@@ -22,6 +22,8 @@ public final class CatalogDtos {
     public record Input(String title, String description, BigDecimal price, String cover_image_url,
         String version, List<UUID> genre_ids, UUID developer_id, String status) {}
     public record StatusInput(String status) {}
+    public record SubmissionInput(BigDecimal expected_fee) {}
+    public record PublicationQuote(UUID game_id, boolean requires_fee, String amount, String usd_amount, String balance, boolean already_paid) {}
     public record ReviewInput(String status, String reason) {}
     public record SubmissionPage(List<Submission> items, long total, int page, int size) {}
 }

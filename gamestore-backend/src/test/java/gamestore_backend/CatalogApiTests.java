@@ -64,6 +64,53 @@ class CatalogApiTests {
     void review(String submission, String status) throws Exception {
         result(send("PUT", "/submissions/" + submission + "/review", admin, Map.of("status", status, "reason", "Test review decision")), 200);
     }
+    @Test void freePublicationRequiresConfirmedFeeAndFundsWithoutPartialWrites() throws Exception {
+        var free=body(); free.put("price","0");
+        String id=result(send("POST","/games",dev,free),201).path("id").asText();
+        String path="/games/"+id;
+        JsonNode quote=result(send("GET",path+"/publication-quote",dev,null),200);
+        assertTrue(quote.path("requires_fee").asBoolean());
+        assertEquals("1300000.00",quote.path("amount").asText());
+        assertEquals("50.00",quote.path("usd_amount").asText());
+        assertEquals(403,send("GET",path+"/publication-quote",other,null).statusCode());
+        assertEquals(409,send("POST",path+"/submissions",dev,null).statusCode());
+        assertEquals(402,send("POST",path+"/submissions",dev,Map.of("expected_fee","1300000")).statusCode());
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM game_submissions WHERE game_id=?::uuid",Integer.class,id));
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM transactions WHERE user_id=?",Integer.class,dev.id()));
+        jdbc.update("UPDATE users SET balance=1300000 WHERE id=?",dev.id());
+        free.put("price","10"); result(send("PUT",path,dev,free),200);
+        assertEquals(409,send("POST",path+"/submissions",dev,Map.of("expected_fee","1300000")).statusCode());
+        assertEquals("1300000.00",jdbc.queryForObject("SELECT balance::text FROM users WHERE id=?",String.class,dev.id()));
+        result(send("POST",path+"/submissions",dev,Map.of("expected_fee","0")),201);
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM game_publication_fees WHERE game_id=?::uuid",Integer.class,id));
+    }
+    @Test void freePublicationConcurrentRequestsAndRejectionChargeOnlyOnceAndScopeFeeReports() throws Exception {
+        var free=body(); free.put("price","0");
+        String id=result(send("POST","/games",dev,free),201).path("id").asText();
+        String path="/games/"+id;
+        jdbc.update("UPDATE users SET balance=2000000 WHERE id=?",dev.id());
+        var first=http.sendAsync(request("POST",path+"/submissions",dev,Map.of("expected_fee","1300000")),HttpResponse.BodyHandlers.ofString());
+        var second=http.sendAsync(request("POST",path+"/submissions",dev,Map.of("expected_fee","1300000")),HttpResponse.BodyHandlers.ofString());
+        var a=first.join(); var b=second.join();
+        assertEquals(List.of(201,409),java.util.stream.Stream.of(a.statusCode(),b.statusCode()).sorted().toList());
+        String submission=json.readTree(a.statusCode()==201?a.body():b.body()).path("id").asText();
+        assertEquals("700000.00",jdbc.queryForObject("SELECT balance::text FROM users WHERE id=?",String.class,dev.id()));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM game_publication_fees WHERE game_id=?::uuid",Integer.class,id));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM transactions WHERE user_id=? AND type='OUT' AND amount=1300000 AND game_id IS NULL AND status='SUCCESSED'",Integer.class,dev.id()));
+        review(submission,"REJECTED");
+        JsonNode quote=result(send("GET",path+"/publication-quote",dev,null),200);
+        assertTrue(quote.path("already_paid").asBoolean()); assertEquals("0.00",quote.path("amount").asText());
+        result(send("POST",path+"/submissions",dev,Map.of("expected_fee","0")),201);
+        assertEquals("700000.00",jdbc.queryForObject("SELECT balance::text FROM users WHERE id=?",String.class,dev.id()));
+        var endpoint="http://127.0.0.1:"+port+"/api/commerce/revenue/fees";
+        JsonNode rows=result(http.send(HttpRequest.newBuilder(URI.create(endpoint)).header("Authorization","Bearer "+dev.token()).GET().build(),HttpResponse.BodyHandlers.ofString()),200);
+        assertEquals(1,rows.size()); assertEquals(id,rows.get(0).path("game_id").asText()); assertEquals("1300000.00",rows.get(0).path("amount").asText());
+        rows=result(http.send(HttpRequest.newBuilder(URI.create(endpoint+"?developer_id="+dev.id())).header("Authorization","Bearer "+other.token()).GET().build(),HttpResponse.BodyHandlers.ofString()),200);
+        assertEquals(0,rows.size());
+        assertEquals(403,http.send(HttpRequest.newBuilder(URI.create(endpoint)).header("Authorization","Bearer "+buyer.token()).GET().build(),HttpResponse.BodyHandlers.ofString()).statusCode());
+        rows=result(http.send(HttpRequest.newBuilder(URI.create(endpoint+"?from=2099-01-01")).header("Authorization","Bearer "+dev.token()).GET().build(),HttpResponse.BodyHandlers.ofString()),200);
+        assertEquals(0,rows.size());
+    }
     @Test void draftCrudRequiresGenresAndKeepsOwner() throws Exception {
         JsonNode created = create(dev); String id = created.path("id").asText();
         assertEquals("HIDDEN", created.path("status").asText()); assertEquals(2, created.path("genre_ids").size());

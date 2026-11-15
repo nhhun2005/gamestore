@@ -52,6 +52,84 @@ async function assertEmptyDownload(page, filename) {
   expect(statSync(await file.path()).size).toBe(0);
 }
 
+test('gateway and wallet have distinct colors and only the gateway shows loading when it is selected', async ({ page }) => {
+  const { state, calls } = await setup(page);
+  state.capabilities.sandbox_payments = true;
+  let release;
+  const hold = new Promise((resolve) => { release = resolve; });
+  let gatewayCalls = 0, gatewayKey;
+  await page.route('**/api/commerce/checkouts', async (route) => {
+    gatewayCalls++;
+    gatewayKey = route.request().headers()['idempotency-key'];
+    await hold;
+    await route.fulfill({ status: 503, json: { message: 'Chưa tạo được đơn GameStore Pay.' } });
+  });
+  await page.goto('/games/journey');
+  await page.getByRole('button', { name: 'Mua game', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const gateway = dialog.getByRole('region', { name: 'GameStore Pay', exact: true }).getByRole('button');
+  const wallet = dialog.getByRole('region', { name: 'Ví GameStore', exact: true }).getByRole('button').first();
+  expect(await gateway.evaluate((button) => getComputedStyle(button).backgroundImage)).not.toBe(await wallet.evaluate((button) => getComputedStyle(button).backgroundImage));
+  try {
+    await gateway.click();
+    await expect(gateway).toHaveText('Đang tạo đơn GameStore Pay…');
+    await expect(gateway).toHaveAttribute('aria-busy', 'true');
+    await expect(wallet).toHaveText('Thanh toán bằng ví');
+    await expect(wallet).toHaveAttribute('aria-busy', 'false');
+    await expect(wallet).toBeDisabled();
+    await wallet.evaluate((button) => button.click());
+    expect(calls.purchases).toHaveLength(0);
+    expect(gatewayCalls).toBe(1);
+    await wallet.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'output/playwright/checkout-gateway-loading.png', fullPage: true });
+  } finally { release(); }
+  await expect(dialog.getByRole('alert')).toHaveText('Chưa tạo được đơn GameStore Pay.');
+  await expect(wallet).toBeEnabled();
+  await expect(gateway).toHaveText('Thanh toán qua GameStore Pay');
+  const purchaseRequest = page.waitForRequest((r) => new URL(r.url()).pathname === '/api/commerce/purchases');
+  await wallet.click();
+  const request = await purchaseRequest;
+  expect(request.headers()['idempotency-key']).not.toBe(gatewayKey);
+  await expect(page.getByRole('heading', { name: 'Đã thêm vào thư viện', exact: true })).toBeVisible();
+  expect(calls.purchases).toHaveLength(1);
+});
+
+test('wallet checkout does not show gateway loading or submit a gateway request', async ({ page }) => {
+  const { state } = await setup(page);
+  state.capabilities.sandbox_payments = true;
+  let release;
+  const hold = new Promise((resolve) => { release = resolve; });
+  let walletCalls = 0, gatewayCalls = 0;
+  await page.route('**/api/commerce/purchases', async (route) => {
+    walletCalls++;
+    await hold;
+    await route.fulfill({ status: 503, json: { message: 'Chưa thanh toán được bằng ví.' } });
+  });
+  await page.route('**/api/commerce/checkouts', async (route) => {
+    gatewayCalls++;
+    await route.fulfill({ status: 503, json: { message: 'Unexpected gateway call' } });
+  });
+  await page.goto('/games/journey');
+  await page.getByRole('button', { name: 'Mua game', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const gateway = dialog.getByRole('region', { name: 'GameStore Pay', exact: true }).getByRole('button');
+  const wallet = dialog.getByRole('region', { name: 'Ví GameStore', exact: true }).getByRole('button').first();
+  try {
+    await wallet.click();
+    await expect(wallet).toHaveText('Đang thanh toán bằng ví…');
+    await expect(wallet).toHaveAttribute('aria-busy', 'true');
+    await expect(gateway).toHaveText('Thanh toán qua GameStore Pay');
+    await expect(gateway).toHaveAttribute('aria-busy', 'false');
+    await expect(gateway).toBeDisabled();
+    await gateway.evaluate((button) => button.click());
+    expect(walletCalls).toBe(1);
+    expect(gatewayCalls).toBe(0);
+  } finally { release(); }
+  await expect(dialog.getByRole('alert')).toHaveText('Chưa thanh toán được bằng ví.');
+  await expect(gateway).toBeEnabled();
+  await expect(wallet).toHaveText('Thanh toán bằng ví');
+});
+
 test("detail URL loads directly and on reload with real metadata, reviews, price and no modal", async ({ page }) => {
   const { calls, game } = await setup(page);
   await page.goto("/games/journey");
@@ -76,7 +154,7 @@ test("purchase confirmation remains explicit and unlocks an empty game-named dow
   await page.goto("/games/journey");
   await page.getByRole("button", { name: "Mua game", exact: true }).click();
   expect(calls.purchases).toHaveLength(0);
-  await page.getByRole("dialog").getByRole("button", { name: "Xác nhận mua game", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Thanh toán bằng ví", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Đã thêm vào thư viện" })).toBeVisible();
   await page.getByRole("button", { name: "Đóng hộp thoại", exact: true }).click();
   expect(calls.purchases).toEqual([{ game_id: "journey", expected_amount: "150000.00" }]);
@@ -122,7 +200,7 @@ test("failed purchase never grants a download and unsafe filename characters are
   calls.failPurchase = true;
   await page.goto("/games/journey");
   await page.getByRole("button", { name: "Mua game", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Xác nhận mua game", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Thanh toán bằng ví", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Giá đã thay đổi.");
   await page.getByRole("button", { name: "Đóng hộp thoại", exact: true }).click();
   await expect(page.getByRole("button", { name: "Tải game", exact: true })).toHaveCount(0);

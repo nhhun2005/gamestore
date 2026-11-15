@@ -42,8 +42,9 @@ export const gameApi = {
     request(`/games/${encodeURIComponent(id)}/permanent`, "DELETE"),
   visibility: (id, status) =>
     request(`/games/${encodeURIComponent(id)}/status`, "PUT", { status }),
-  submit: (id) =>
-    request(`/games/${encodeURIComponent(id)}/submissions`, "POST"),
+  publicationQuote: (id) => request(`/games/${encodeURIComponent(id)}/publication-quote`),
+  submit: (id, expected_fee = "0.00") =>
+    request(`/games/${encodeURIComponent(id)}/submissions`, "POST", { expected_fee }),
   submissions: ({ status = "", q = "", page = 0 } = {}) => {
     const query = new URLSearchParams({ q, page, size: 20 });
     if (status) query.set("status", status);

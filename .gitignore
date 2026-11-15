@@ -1,0 +1,7 @@
+
+# Local implementation notes (keep on disk, exclude from Git)
+/docs/*.md
+/gamestore-web/COMMERCE.md
+/gamestore-backend/README.md
+
+/third_party/fake-bank/*.md

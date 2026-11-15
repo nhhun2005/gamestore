@@ -1,0 +1,38 @@
+import { readFileSync } from 'node:fs';
+import { test, expect } from '@playwright/test';
+
+test('real JWT library CRUD persists to PostgreSQL and stays private from admin', async ({ page, request }) => {
+  const fixture = JSON.parse(readFileSync('output/live-fixture.json', 'utf8'));
+  await page.goto('/login');
+  await page.getByPlaceholder('Nhập username hoặc email...').fill(fixture.libraryUser.username);
+  await page.getByPlaceholder('••••••••').fill(fixture.libraryUser.password);
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await expect(page).toHaveURL(/store/);
+  await page.goto('/library');
+  await page.getByRole('button', { name: 'Tạo bộ sưu tập', exact: true }).click();
+  await page.getByLabel('Tên bộ sưu tập', { exact: true }).fill('Bộ sưu tập DB');
+  await page.getByRole('button', { name: 'Lưu bộ sưu tập' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Thêm game vào bộ sưu tập', exact: true }).click();
+  await page.getByRole('button', { name: 'Thêm vào bộ sưu tập', exact: true }).click();
+  await expect(page.getByRole('heading', { name: fixture.libraryGame.title, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Ghi chú riêng tư', exact: true }).click();
+  await page.getByLabel('Ghi chú riêng tư', { exact: true }).fill('Ghi chú chỉ cho chủ thư viện');
+  await page.getByRole('button', { name: 'Lưu ghi chú' }).click();
+  await expect(page.getByText('Ghi chú chỉ cho chủ thư viện', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Ẩn game', exact: true }).click();
+  await expect(page.getByRole('heading', { name: fixture.libraryGame.title, exact: true })).toHaveCount(0);
+  await page.reload();
+  await page.getByLabel('Bộ sưu tập', { exact: true }).selectOption({ label: 'Bộ sưu tập DB' });
+  await page.getByLabel('Hiển thị game').selectOption('hidden');
+  await expect(page.getByText('Ghi chú chỉ cho chủ thư viện', { exact: true })).toBeVisible();
+  const adminLogin = await request.post(`${fixture.api}/auth/login`, { data: { account: fixture.admin.username, password: fixture.admin.password } });
+  const admin = await adminLogin.json();
+  const library = await request.get(`${fixture.api}/commerce/library`, { headers: { Authorization: `Bearer ${admin.token}` } });
+  expect((await library.json()).collections).toEqual([]);
+  await page.getByRole('button', { name: 'Xóa bộ sưu tập', exact: true }).click();
+  await page.getByRole('button', { name: 'Xác nhận xóa bộ sưu tập' }).click();
+  await expect(page.getByRole('heading', { name: fixture.libraryGame.title, exact: true })).toBeVisible();
+  await expect(page.getByText('Ghi chú chỉ cho chủ thư viện', { exact: true })).toBeVisible();
+  await page.screenshot({ path: 'output/playwright-live/library-database.png', fullPage: true });
+});

@@ -15,28 +15,27 @@ function GameCard({
 }) {
   const { state, user, service } = useCommerce() || {};
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  const owned =
-    isOwned ||
-    (game &&
-      state?.game_bought?.some(
-        (p) => p.game_id === game.id && p.user_id === user?.id,
-      ));
   const isWishlisted =
-    game && (state?.wishlist ?? []).some((w) => w.game_id === game.id);
+    game &&
+    (state?.wishlist ?? []).some(
+      (w) => w.game_id === game.id && (!w.user_id || w.user_id === user?.id),
+    );
 
   async function handleWishlistToggle(e) {
     e.stopPropagation();
     if (!service || !game || busy) return;
     setBusy(true);
+    setError("");
     try {
       if (isWishlisted) {
         await service.removeWishlist(game.id);
       } else {
         await service.addWishlist(game.id);
       }
-    } catch {
-      // Ignored for smoother UI toggle
+    } catch (failure) {
+      setError(failure.message || "Không thể cập nhật yêu thích.");
     } finally {
       setBusy(false);
     }
@@ -44,7 +43,7 @@ function GameCard({
 
   return (
     <article className="game-card">
-      {game && user && !owned && (
+      {game && user && (
         <button
           type="button"
           className={`game-card-wishlist-btn ${isWishlisted ? "active" : ""}`}
@@ -56,6 +55,11 @@ function GameCard({
           {isWishlisted ? "♥" : "♡"}
         </button>
       )}
+      {error && (
+        <p role="alert" className="commerce-error">
+          {error}
+        </p>
+      )}
       {game ? (
         <Artwork game={game} />
       ) : (
@@ -63,7 +67,11 @@ function GameCard({
       )}
       <div className="game-card-body">
         <h3 className="game-card-title">
-          {game ? <Link to={`/games/${encodeURIComponent(game.id)}`}>{title}</Link> : title}
+          {game ? (
+            <Link to={`/games/${encodeURIComponent(game.id)}`}>{title}</Link>
+          ) : (
+            title
+          )}
         </h3>
         <div className="game-card-meta">
           <span>
@@ -73,7 +81,10 @@ function GameCard({
           </span>
           {game && <PriceDisplay game={game} promotions={promotions} />}
           {game ? (
-            <Link className="steam-auth-btn primary" to={`/games/${encodeURIComponent(game.id)}`}>
+            <Link
+              className="steam-auth-btn primary"
+              to={`/games/${encodeURIComponent(game.id)}`}
+            >
               Xem chi tiết
             </Link>
           ) : isOwned || onActionClick ? (

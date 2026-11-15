@@ -16,10 +16,11 @@ test("real browser → JWT API → PostgreSQL: deposit, discounted purchase, rev
       .fill(account.username);
     await page.getByPlaceholder("••••••••").fill(account.password);
     await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-    await expect(page).toHaveURL(/store/);
+    await expect(page).toHaveURL(account.id === fixture.admin.id ? /admin\/revenue/ : /store/);
   }
   async function buy(game) {
     await page.goto("/store");
+    await page.getByRole("textbox", { name: "Tìm trong cửa hàng" }).fill(game.title);
     await page
       .getByRole("article")
       .filter({
@@ -28,7 +29,7 @@ test("real browser → JWT API → PostgreSQL: deposit, discounted purchase, rev
       .getByRole("link", { name: "Xem chi tiết" })
       .click();
     await page.getByRole("button", { name: "Mua game", exact: true }).click();
-    await page.getByRole("button", { name: "Xác nhận mua game" }).click();
+    await page.getByRole("button", { name: "Thanh toán bằng ví" }).click();
     await expect(
       page.getByRole("heading", { name: "Đã thêm vào thư viện" }),
     ).toBeVisible();

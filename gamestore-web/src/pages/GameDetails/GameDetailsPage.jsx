@@ -6,6 +6,7 @@ import { cents, priceOf } from "../../services/currency";
 import { downloadGame } from "../../services/gameDownload.js";
 import CheckoutDialog from "../Checkout/CheckoutDialog";
 import ReviewDialog from "../Reviews/ReviewDialog";
+import ReviewList from "../Reviews/ReviewList";
 import { storeApi } from "../../services/storeApi.js";
 import "./GameDetailsPage.css";
 
@@ -257,7 +258,7 @@ function GameDetailsInner({ gameId }) {
                 )}
               </div>
 
-              {!isOwned && game.status === "AVAILABLE" && (
+              {(isOwned || game.status === "AVAILABLE") && (
                 <div className="game-details-hero-wishlist">
                   <button
                     type="button"
@@ -417,35 +418,7 @@ function GameDetailsInner({ gameId }) {
               </div>
 
               {reviews.length > 0 ? (
-                <div className="game-details-review-list">
-                  {reviews.map((r) => {
-                    const author = (state?.users ?? []).find(
-                      (u) => u.id === r.user_id,
-                    );
-                    const authorName = r.username || author?.username || "Người chơi";
-                    return (
-                      <article key={r.id} className="game-details-review-card">
-                        <div className="game-details-review-header">
-                          <div
-                            className="game-details-review-avatar"
-                            aria-hidden="true"
-                          >
-                            {authorName.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="game-details-review-info">
-                            <span className="game-details-review-author">
-                              {authorName}
-                            </span>
-                            <span className="game-details-review-rating">
-                              ★ {r.rating} / 5
-                            </span>
-                          </div>
-                        </div>
-                        <p className="game-details-review-body">{r.content}</p>
-                      </article>
-                    );
-                  })}
-                </div>
+                <ReviewList reviews={reviews} users={state?.users || []} />
               ) : (
                 <div className="game-details-empty-reviews">
                   <p>Chưa có đánh giá nào cho trò chơi này.</p>

@@ -68,9 +68,12 @@ public class CatalogService {
     @Transactional(isolation=Isolation.READ_COMMITTED)
     public void permanent(String username,UUID id) { procedures.call("sp_delete_game_permanently",username,id); }
     @Transactional(isolation=Isolation.READ_COMMITTED)
-    public Submission submit(String username,UUID id) {
-        UUID submission=procedures.uuid("sp_submit_game",username,id);
+    public Submission submit(String username,UUID id,SubmissionInput input) {
+        UUID submission=procedures.uuid("sp_submit_game_with_fee",username,id,input==null?java.math.BigDecimal.ZERO:input.expected_fee());
         return repository.submission(submission).orElseThrow();
+    }
+    public PublicationQuote publicationQuote(String username,UUID id) {
+        return repository.publicationQuote(get(username,id),actor(username));
     }
     public SubmissionPage submissions(String username,String status,String query,int page,int size) {
         admin(username);

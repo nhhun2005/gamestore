@@ -36,6 +36,7 @@ app:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   commerce:
     demo-topups-enabled: true # QR simulation only; set false to disable simulated credits.
+    sandbox-payments-enabled: ${GAMESTORE_PAY_ENABLED:true} # GameStore Pay test checkout; no bank transfers.
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}
 cloudinary:

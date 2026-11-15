@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCommerce } from "../../components/commerce/context";
 import { Artwork, Modal } from "../../components/commerce/CommerceUI";
-import { money } from "../../services/currency";
+import { cents, money } from "../../services/currency";
 import { gameApi } from "../../services/gameApi";
 import GameEditor from "./GameEditor";
 import { decisionLabel, formatDate } from "./gamePresentation";
@@ -75,6 +75,19 @@ export default function GameCatalogPage({ createOnly = false }) {
       if (active.current) setError(e.message);
     } finally {
       if (active.current) setLoading(false);
+    }
+  }
+  async function confirmSubmission(game) {
+    setBusy(true);
+    setError("");
+    setFormError("");
+    try {
+      const quote = await gameApi.publicationQuote(game.id);
+      if (active.current) setConfirm({ game, action: "submit", quote });
+    } catch (e) {
+      if (active.current) setError(e.message);
+    } finally {
+      if (active.current) setBusy(false);
     }
   }
   async function mutate(action, message, close) {
@@ -222,9 +235,10 @@ export default function GameCatalogPage({ createOnly = false }) {
               <p className="commerce-empty">
                 {managedGames.length
                   ? "Không có trò chơi phù hợp."
-                  : admin && data.games.some((game) => game.has_pending_submission)
+                  : admin &&
+                      data.games.some((game) => game.has_pending_submission)
                     ? "Game đang chờ duyệt nằm trong mục Đơn đăng tải trò chơi."
-                  : "Chưa có trò chơi. Hãy tạo trò chơi đầu tiên."}
+                    : "Chưa có trò chơi. Hãy tạo trò chơi đầu tiên."}
               </p>
             )}
             <div className="game-management-grid">
@@ -307,10 +321,7 @@ export default function GameCatalogPage({ createOnly = false }) {
                       <button
                         className="commerce-button primary"
                         disabled={busy || game.has_pending_submission}
-                        onClick={() => {
-                          setFormError("");
-                          setConfirm({ game, action: "submit" });
-                        }}
+                        onClick={() => confirmSubmission(game)}
                       >
                         {game.has_pending_submission
                           ? "Đang chờ duyệt"
@@ -394,6 +405,31 @@ export default function GameCatalogPage({ createOnly = false }) {
                 ? "Trò chơi sẽ ngừng hiển thị trong cửa hàng. Kết quả duyệt hiện tại được giữ lại."
                 : "Gửi nội dung hiện tại cho quản trị viên xét duyệt. Trò chơi chỉ phát hành khi được chấp thuận."}
           </p>
+          {confirm.action === "submit" && (
+            <section className="publication-quote">
+              <h3>Phí đăng tải: {money(confirm.quote.amount)}</h3>
+              {confirm.quote.requires_fee ? (
+                <p>
+                  Game miễn phí có phí đăng tải 50 USD = 1.300.000đ, trừ từ ví
+                  khi gửi đơn lần đầu. Gửi lại sau khi bị từ chối sẽ không thu
+                  thêm phí.
+                </p>
+              ) : (
+                <p>
+                  {confirm.quote.already_paid
+                    ? "Game đã thanh toán phí đăng tải."
+                    : "Game trả phí áp dụng phí sàn 10% trên mỗi lượt bán."}
+                </p>
+              )}
+              <p>Số dư ví: {money(confirm.quote.balance)}</p>
+              {cents(confirm.quote.balance) < cents(confirm.quote.amount) && (
+                <p role="alert">
+                  Số dư chưa đủ. <Link to="/wallet">Nạp tiền vào ví</Link> để
+                  tiếp tục.
+                </p>
+              )}
+            </section>
+          )}
           {formError && (
             <p className="commerce-error" role="alert">
               {formError}
@@ -401,7 +437,11 @@ export default function GameCatalogPage({ createOnly = false }) {
           )}
           <button
             className={`commerce-button ${confirm.action === "remove" ? "danger" : "primary"}`}
-            disabled={busy}
+            disabled={
+              busy ||
+              (confirm.action === "submit" &&
+                cents(confirm.quote.balance) < cents(confirm.quote.amount))
+            }
             onClick={() =>
               mutate(
                 () =>
@@ -409,7 +449,7 @@ export default function GameCatalogPage({ createOnly = false }) {
                     ? gameApi.remove(confirm.game.id)
                     : confirm.action === "hide"
                       ? gameApi.hide(confirm.game.id)
-                      : gameApi.submit(confirm.game.id),
+                      : gameApi.submit(confirm.game.id, confirm.quote.amount),
                 confirm.action === "submit"
                   ? "Đã gửi đơn đăng tải."
                   : confirm.action === "hide"

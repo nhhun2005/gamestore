@@ -1,0 +1,16 @@
+# Fake-bank integration
+
+- Source: https://github.com/nick-roust/fake-bank
+- Pinned commit: `6552155550ae5ae3d595d946bf001026617bef8a`
+- License: Apache-2.0; full text in `LICENSE` beside this file. No upstream NOTICE file was present at this revision.
+- Upstream files adapted: `apps/checkout-ui/src/index.tsx`, `apps/checkout-ui/src/styles.css`, `apps/api/src/payments/card-simulation.ts`, `apps/api/src/payments/payment.lifecycle.ts`.
+
+Modified for GameStore: checkout form/result components translated to Vietnamese and embedded in the existing React router; styling scoped under `gs-pay`; network adapter replaced with GameStore's authenticated commerce API. The two test-card outcomes and final-state lifecycle are implemented server-side in PostgreSQL/Spring Boot. Added QR confirmation, cancellation, expiry, idempotency, wallet concurrency protection, persistent receipts, and existing library/revenue integration.
+
+The upstream Fastify service and its separate PostgreSQL database are not required or bundled. This is an adaptation of the checkout and simulation parts, not a running instance of the complete Fake-bank provider. GameStore Pay uses test payments only and is not affiliated with a bank or VNPAY.
+
+Adapted files:
+- `gamestore-web/src/pages/Checkout/FakeBankCardForm.jsx`
+- `gamestore-web/src/pages/Checkout/FakeBankPaymentResult.jsx`
+- `gamestore-web/src/pages/Checkout/GameStorePay.css`
+- `gamestore-backend/src/main/resources/db/migration/V14__sandbox_checkout.sql`

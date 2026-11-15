@@ -67,6 +67,9 @@ async function setup(page, initialRole = "DEVELOPER") {
     const actor = current(route),
       admin = actor.role === "ADMINISTRATOR";
     const game = state.games.find((g) => g.id === parts[1]);
+    if (parts[2] === "publication-quote") return route.fulfill({ json: {
+      game_id: game.id, requires_fee: false, amount: "0.00", usd_amount: "0.00", balance: "0.00", already_paid: false,
+    } });
     if (path === "/manage")
       return route.fulfill({
         json: {

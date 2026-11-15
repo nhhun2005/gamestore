@@ -15,6 +15,7 @@ function validState(state) {
         "reviews",
       ].every((key) => Array.isArray(state[key])) &&
       (!state.wishlist || Array.isArray(state.wishlist)) &&
+      (!state.library || ['collections', 'memberships', 'preferences'].every((key) => Array.isArray(state.library[key]))) &&
       state.users.every(
         (u) =>
           typeof u.id === "string" &&
@@ -97,7 +98,7 @@ export function createCommerceService({
   try {
     const saved = JSON.parse(storage?.getItem(COMMERCE_KEY));
     if (enabled && validState(saved)) {
-      state = { ...saved, wishlist: saved.wishlist || [] };
+      state = { ...saved, wishlist: saved.wishlist || [], library: saved.library || { collections: [], memberships: [], preferences: [] } };
     }
   } catch {
     /* Fresh state after incompatible or corrupt storage. */
@@ -122,6 +123,21 @@ export function createCommerceService({
     if (user.expiresAt && user.expiresAt <= Date.now())
       throw Error("Phiên đăng nhập đã hết hạn.");
     return user;
+  }
+  function collectionName(name) {
+    if (typeof name !== 'string' || !name.trim() || name.trim().length > 80) throw Error('Tên bộ sưu tập cần từ 1 đến 80 ký tự.');
+    return name.trim();
+  }
+  function ownCollection(draft, user, id) {
+    const row = draft.library.collections.find((c) => c.id === id && c.user_id === user.id);
+    if (!row) throw Error('Không tìm thấy bộ sưu tập của bạn.');
+    return row;
+  }
+  function ownGame(draft, user, gameId) {
+    if (!draft.game_bought.some((p) => p.user_id === user.id && p.game_id === gameId)) throw Error('Chỉ được quản lý trò chơi đã sở hữu trong thư viện của bạn.');
+  }
+  function uniqueCollection(draft, user, name, id) {
+    if (draft.library.collections.some((c) => c.user_id === user.id && c.id !== id && c.name.toLowerCase() === name.toLowerCase())) throw Error('Tên bộ sưu tập đã tồn tại.');
   }
   async function mutate(operation) {
     if (!enabled)
@@ -313,11 +329,56 @@ export function createCommerceService({
         updateRating(draft, row.game_id);
       });
     },
+    async createCollection(name) {
+      return mutate((draft, user) => {
+        const value = collectionName(name);
+        uniqueCollection(draft, user, value);
+        const row = { id: crypto.randomUUID(), user_id: user.id, name: value };
+        draft.library.collections.push(row);
+        return row;
+      });
+    },
+    async renameCollection(id, name) {
+      return mutate((draft, user) => {
+        const row = ownCollection(draft, user, id);
+        const value = collectionName(name);
+        uniqueCollection(draft, user, value, id);
+        row.name = value;
+        return row;
+      });
+    },
+    async deleteCollection(id) {
+      return mutate((draft, user) => {
+        ownCollection(draft, user, id);
+        draft.library.collections = draft.library.collections.filter((c) => c.id !== id);
+        draft.library.memberships = draft.library.memberships.filter((m) => m.collection_id !== id);
+      });
+    },
+    async collectionGame(collectionId, gameId, add) {
+      return mutate((draft, user) => {
+        ownCollection(draft, user, collectionId);
+        ownGame(draft, user, gameId);
+        const matches = (m) => m.collection_id === collectionId && m.game_id === gameId;
+        if (add && !draft.library.memberships.some(matches)) draft.library.memberships.push({ collection_id: collectionId, game_id: gameId, user_id: user.id });
+        if (!add) draft.library.memberships = draft.library.memberships.filter((m) => !matches(m));
+      });
+    },
+    async saveLibraryPreference(gameId, note, hidden) {
+      return mutate((draft, user) => {
+        ownGame(draft, user, gameId);
+        if (typeof note !== 'string' || note.length > 2000 || typeof hidden !== 'boolean') throw Error('Ghi chú tối đa 2.000 ký tự và cần trạng thái ẩn/hiện hợp lệ.');
+        const previous = draft.library.preferences.find((p) => p.user_id === user.id && p.game_id === gameId);
+        const value = { user_id: user.id, game_id: gameId, note: note.trim(), hidden };
+        if (previous) Object.assign(previous, value);
+        else draft.library.preferences.push(value);
+      });
+    },
     async addWishlist(gameId) {
-      return mutate((draft) => {
+      return mutate((draft, user) => {
         if (!draft.wishlist) draft.wishlist = [];
-        if (!draft.wishlist.some((w) => w.game_id === gameId)) {
+        if (!draft.wishlist.some((w) => w.game_id === gameId && w.user_id === user.id)) {
           draft.wishlist.unshift({
+            user_id: user.id,
             game_id: gameId,
             created_at: new Date().toISOString(),
           });
@@ -325,8 +386,8 @@ export function createCommerceService({
       });
     },
     async removeWishlist(gameId) {
-      return mutate((draft) => {
-        draft.wishlist = (draft.wishlist || []).filter((w) => w.game_id !== gameId);
+      return mutate((draft, user) => {
+        draft.wishlist = (draft.wishlist || []).filter((w) => w.game_id !== gameId || (w.user_id && w.user_id !== user.id));
       });
     },
     async notifications() {
@@ -352,7 +413,20 @@ export function createCommerceService({
             (!from || dayOf(t.created_at) >= from) &&
             (!to || dayOf(t.created_at) <= to),
         )
-        .map((t) => ({ ...t }));
+        .map((t) => {
+          const game = state.games.find((g) => g.id === t.game_id);
+          const owner = state.users.find((u) => u.id === game.developer_id);
+          const platformOwned = owner?.role === 'ADMINISTRATOR';
+          const fee = platformOwned ? cents(t.amount) : (cents(t.amount) + 5n) / 10n;
+          return { ...t, game_title: game.title, developer_id: game.developer_id,
+            developer_name: owner?.username,
+            beneficiary_type: platformOwned ? 'PLATFORM' : 'DEVELOPER',
+            platform_fee: decimal(fee), developer_revenue: decimal(cents(t.amount) - fee) };
+        });
+    },
+    async publicationFees() {
+      if (!["DEVELOPER", "ADMINISTRATOR"].includes(actor().role)) throw Error("Bạn không có quyền xem doanh thu.");
+      return [];
     },
     async reset() {
       const result = await mutate((draft) => {

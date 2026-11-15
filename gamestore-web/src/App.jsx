@@ -26,25 +26,27 @@ import WishlistPage from "./pages/Wishlist/WishlistPage";
 import WalletPage from "./pages/Wallet/WalletPage";
 import TransactionsPage from "./pages/Transactions/TransactionsPage";
 import RevenuePage from "./pages/Revenue/RevenuePage";
+import GameStorePayPage from "./pages/Checkout/GameStorePayPage";
 import DeveloperRegistrationPage from "./pages/DeveloperRegistration/DeveloperRegistrationPage";
 import AdminDeveloperSubmissionsPage from "./pages/DeveloperRegistration/AdminDeveloperSubmissionsPage";
 import VerifyEmailPage from "./pages/VerifyEmail/VerifyEmailPage";
 import { session, demoUsers } from "./services/session";
 import { commerceGateway as commerceService } from "./services/commerceGateway";
 import { CommerceContext } from "./components/commerce/context";
-import { Modal } from "./components/commerce/CommerceUI";
-import { useOperation } from "./components/commerce/useOperation";
 import { money } from "./services/currency";
 import "./App.css";
 import "./commerce.css";
 
-const returnPath = (path) =>
+const homePath = (user) => user?.role === "ADMINISTRATOR" ? "/admin/revenue" : "/store";
+const consumerPath = (path) => /^\/(store|library|wishlist)(\/|$)/.test(path) || path.startsWith("/games/");
+const returnPath = (path, user) =>
   typeof path === "string" &&
   path.startsWith("/") &&
   !path.startsWith("//") &&
+  !(user?.role === "ADMINISTRATOR" && consumerPath(path)) &&
   !["/login", "/register", "/demo", "/verify"].includes(path)
     ? path
-    : "/store";
+    : homePath(user);
 function Application() {
   const user = useSyncExternalStore(session.subscribe, session.snapshot);
   const state = useSyncExternalStore(
@@ -53,21 +55,77 @@ function Application() {
   );
   const [notice, setNotice] = useState("");
   const [accountError, setAccountError] = useState("");
-  const [reset, setReset] = useState(false);
-  const operation = useOperation();
   const [explicitLogout, setExplicitLogout] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 4500);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  useEffect(() => {
     let active = true;
     if (user)
-      commerceService.prepareAccount().catch((error) => {
-        if (active) setAccountError(error.message);
-      });
+      commerceService
+        .prepareAccount()
+        .then(() => {
+          if (active) setAccountError("");
+        })
+        .catch((error) => {
+          if (active) setAccountError(error.message);
+        });
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, location.pathname]);
+  const pendingCheckouts = (state.checkout_sessions || []).filter(
+    (c) => c.status === "PENDING",
+  );
+  const pendingTimes = pendingCheckouts
+    .map((c) => Date.parse(c.expires_at))
+    .filter(Number.isFinite);
+  const hasPendingCheckout = pendingCheckouts.length > 0;
+  const nextCheckoutExpiry = pendingTimes.length
+    ? Math.min(...pendingTimes)
+    : null;
+  useEffect(() => {
+    if (user?.source !== "jwt") return;
+    let active = true,
+      refreshing = false;
+    const refresh = () => {
+      if (!active || refreshing || document.visibilityState === "hidden")
+        return;
+      refreshing = true;
+      commerceService
+        .prepareAccount()
+        .catch(() => {})
+        .finally(() => {
+          refreshing = false;
+        });
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const poll = hasPendingCheckout ? setInterval(refresh, 15000) : null;
+    const expiry =
+      nextCheckoutExpiry === null
+        ? null
+        : setTimeout(
+            refresh,
+            Math.min(
+              2147483647,
+              Math.max(0, nextCheckoutExpiry - Date.now() + 150),
+            ),
+          );
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      clearInterval(poll);
+      clearTimeout(expiry);
+    };
+  }, [user?.id, user?.source, hasPendingCheckout, nextCheckoutExpiry]);
   useEffect(() => {
     if (!user?.expiresAt) return;
     const timer = setInterval(() => {
@@ -81,10 +139,10 @@ function Application() {
   const navigatePage = (page) =>
     navigate(`/${page}`, { state: location.state });
   const authSuccess = (data) => {
-    const destination = explicitLogout
-      ? "/store"
-      : returnPath(location.state?.from);
     session.login(data);
+    const destination = explicitLogout
+      ? homePath(session.snapshot())
+      : returnPath(location.state?.from, session.snapshot());
     setExplicitLogout(false);
     setAccountError("");
     setNotice("");
@@ -95,7 +153,6 @@ function Application() {
     flushSync(() => setExplicitLogout(true));
     session.logout();
     setNotice("");
-    setReset(false);
     navigate("/login", { replace: true, state: { from: "/store" } });
   };
   function protectedPage(element, role) {
@@ -109,12 +166,16 @@ function Application() {
           replace
         />
       );
+    if (user.role === "ADMINISTRATOR" && consumerPath(location.pathname))
+      return <Navigate to={homePath(user)} replace />;
     if (role && !(Array.isArray(role) ? role : [role]).includes(user.role))
       return (
         <main className="steam-main-content commerce-page">
           <h1>Không có quyền truy cập</h1>
-          <p>Trang này dành cho {Array.isArray(role) ? role.join(", ") : role}.</p>
-          <Link to="/store">Về cửa hàng</Link>
+          <p>
+            Trang này dành cho {Array.isArray(role) ? role.join(", ") : role}.
+          </p>
+          <Link to={homePath(user)}>Về trang chính</Link>
         </main>
       );
     if (accountError)
@@ -146,7 +207,7 @@ function Application() {
   }
   const authPage = (registration) =>
     user ? (
-      <Navigate to={returnPath(location.state?.from)} replace />
+      <Navigate to={returnPath(location.state?.from, user)} replace />
     ) : (
       <>
         <div className="auth-notice" role="status">
@@ -161,7 +222,7 @@ function Application() {
     );
   const demoPage =
     user?.source === "jwt" ? (
-      <Navigate to="/store" replace />
+      <Navigate to={homePath(user)} replace />
     ) : (
       <main className="steam-main-content commerce-page">
         <section className="commerce-panel demo-selector">
@@ -179,7 +240,7 @@ function Application() {
                 onClick={() => {
                   session.demo(fixture.id);
                   setNotice("");
-                  navigate(returnPath(location.state?.from));
+                  navigate(returnPath(location.state?.from, fixture));
                 }}
               >
                 <strong>{fixture.username}</strong>
@@ -206,39 +267,40 @@ function Application() {
       {user && (
         <Navbar
           user={user}
-          activePage={location.pathname.startsWith("/games/") ? "store" : location.pathname.slice(1)}
+          activePage={
+            location.pathname.startsWith("/games/")
+              ? "store"
+              : location.pathname.slice(1)
+          }
           onNavigate={navigatePage}
           onLogout={logout}
           balance={account ? money(account.balance) : undefined}
         />
       )}
-      {user?.source === "demo" && import.meta.env.DEV && (
-        <div className="commerce-demo-bar">
-          <div>
-            <span>DEMO · Không có thanh toán thật</span>
-            <div>
-              {user.source === "demo" && <Link to="/demo">Đổi danh tính</Link>}
-              <button disabled={operation.busy} onClick={() => setReset(true)}>
-                Đặt lại dữ liệu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {notice && user && (
-        <p className="commerce-notice" role="status">
+        <p className="commerce-notice app-toast" role="status">
           {notice}
+          <button
+            type="button"
+            aria-label="Đóng thông báo"
+            onClick={() => setNotice("")}
+          >
+            ×
+          </button>
         </p>
       )}
       <div key={user?.id || "anonymous"} className="application-content">
         <Routes>
           <Route
             path="/"
-            element={<Navigate to={user ? "/store" : "/login"} replace />}
+            element={<Navigate to={user ? homePath(user) : "/login"} replace />}
           />
           <Route path="/login" element={authPage(false)} />
           <Route path="/register" element={authPage(true)} />
-          <Route path="/verify" element={<VerifyEmailPage onNavigate={navigatePage} />} />
+          <Route
+            path="/verify"
+            element={<VerifyEmailPage onNavigate={navigatePage} />}
+          />
           {import.meta.env.DEV && <Route path="/demo" element={demoPage} />}
           <Route
             path="/store"
@@ -252,8 +314,15 @@ function Application() {
               false,
             )}
           />
-          <Route path="/games/:gameId" element={protectedPage(<GameDetailsPage />)} />
+          <Route
+            path="/games/:gameId"
+            element={protectedPage(<GameDetailsPage />)}
+          />
           <Route path="/wallet" element={protectedPage(<WalletPage />)} />
+          <Route
+            path="/checkout/:id"
+            element={protectedPage(<GameStorePayPage />)}
+          />
           <Route
             path="/transactions"
             element={protectedPage(<TransactionsPage />)}
@@ -265,8 +334,20 @@ function Application() {
             )}
           />
           <Route path="/wishlist" element={protectedPage(<WishlistPage />)} />
-          <Route path="/developer/register" element={protectedPage(<DeveloperRegistrationPage />, ["USER", "DEVELOPER"])} />
-          <Route path="/admin/developers" element={protectedPage(<AdminDeveloperSubmissionsPage />, "ADMINISTRATOR")} />
+          <Route
+            path="/developer/register"
+            element={protectedPage(<DeveloperRegistrationPage />, [
+              "USER",
+              "DEVELOPER",
+            ])}
+          />
+          <Route
+            path="/admin/developers"
+            element={protectedPage(
+              <AdminDeveloperSubmissionsPage />,
+              "ADMINISTRATOR",
+            )}
+          />
           <Route
             path="/developer/revenue"
             element={protectedPage(<RevenuePage />, "DEVELOPER")}
@@ -277,10 +358,7 @@ function Application() {
           />
           <Route
             path="/admin/promotions"
-            element={protectedPage(
-              <ManagePromotionsPage />,
-              "ADMINISTRATOR",
-            )}
+            element={protectedPage(<ManagePromotionsPage />, "ADMINISTRATOR")}
           />
           <Route
             path="/manage-games"
@@ -318,37 +396,10 @@ function Application() {
       </div>
       {user && (
         <footer className="commerce-footer">
-          <strong>STEAM STORE</strong>
+          <strong>GAME STORE</strong>
           <span>GameStore · Dự án Bảo trì phần mềm</span>
-          <Link to="/store">Về cửa hàng ↑</Link>
+          <Link to={homePath(user)}>{user.role === "ADMINISTRATOR" ? "Về quản trị ↑" : "Về cửa hàng ↑"}</Link>
         </footer>
-      )}
-      {reset && user && (
-        <Modal
-          title="Đặt lại dữ liệu mô phỏng?"
-          close={() => setReset(false)}
-          {...operation}
-        >
-          <p>
-            Đặt lại ví, giao dịch, thư viện và đánh giá mô phỏng của mọi tài
-            khoản. JWT và dữ liệu backend được giữ nguyên.
-          </p>
-          <button
-            className="commerce-button danger"
-            disabled={operation.busy}
-            onClick={() =>
-              operation.run(
-                () => commerceService.reset(),
-                () => {
-                  setReset(false);
-                  setNotice("Đã đặt lại dữ liệu mô phỏng.");
-                },
-              )
-            }
-          >
-            Xác nhận đặt lại
-          </button>
-        </Modal>
       )}
     </CommerceContext.Provider>
   );

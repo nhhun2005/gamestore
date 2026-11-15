@@ -7,6 +7,9 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.function.Supplier;
+import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -15,6 +18,47 @@ import org.springframework.stereotype.Repository;
 public class CommerceRepository {
     private final JdbcTemplate jdbc;
     public CommerceRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public UUID createCheckout(UUID user,UUID game,UUID key,BigDecimal expected) {
+        return procedure(()->jdbc.queryForObject("CALL public.sp_create_checkout(?,?,?,?,NULL)",(r,n)->r.getObject("p_id",UUID.class),user,game,key,expected));
+    }
+    public UUID createTopUpCheckout(UUID user,UUID key,BigDecimal amount) {
+        return procedure(()->jdbc.queryForObject("CALL public.sp_create_topup_checkout(?,?,?,NULL)",(r,n)->r.getObject("p_id",UUID.class),user,key,amount));
+    }
+    public boolean isTopUpCheckout(UUID user,UUID id) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM public.checkout_sessions WHERE user_id=? AND id=? AND purpose='TOPUP')",Boolean.class,user,id));
+    }
+    public void resolveCheckout(UUID user,UUID id,String action,String method,String bank,String card,UUID qr) {
+        procedure(()->jdbc.update("CALL public.sp_resolve_checkout(?,?,?,?,?,?,?)",user,id,action,method,bank,card,qr));
+    }
+    public Checkout checkout(UUID user,UUID id) {
+        return jdbc.queryForObject("SELECT * FROM public.checkout_sessions WHERE user_id=? AND id=?",(r,n)->new Checkout(
+            r.getObject("id",UUID.class),r.getObject("game_id",UUID.class),r.getObject("transaction_id",UUID.class),r.getString("game_title"),amount(r.getBigDecimal("amount")),
+            r.getString("status"),r.getString("method"),r.getString("bank"),r.getString("card_last4"),r.getString("reason"),
+            r.getObject("created_at",OffsetDateTime.class).toInstant().toString(),r.getObject("expires_at",OffsetDateTime.class).toInstant().toString(),
+            r.getObject("settled_at",OffsetDateTime.class)==null?null:r.getObject("settled_at",OffsetDateTime.class).toInstant().toString(),
+            "PENDING".equals(r.getString("status"))?"gamestore-pay://checkout/"+id+"?code="+r.getObject("qr_token",UUID.class):null,r.getString("purpose")),user,id);
+    }
+    public void expireCheckouts(UUID user) {
+        // Caller holds this user's row lock for the entire snapshot transaction.
+        jdbc.query("SELECT public.expire_checkout_sessions(?,NULL)",(org.springframework.jdbc.core.RowCallbackHandler) r -> {},user);
+    }
+    public List<CheckoutSummary> checkoutSummaries(UUID user) {
+        return jdbc.query("SELECT id,game_id,transaction_id,game_title,amount,status,expires_at,purpose FROM public.checkout_sessions WHERE user_id=? ORDER BY created_at DESC",
+            (r,n)->new CheckoutSummary(r.getObject("id",UUID.class),r.getObject("game_id",UUID.class),r.getObject("transaction_id",UUID.class),r.getString("game_title"),
+                amount(r.getBigDecimal("amount")),r.getString("status"),r.getObject("expires_at",OffsetDateTime.class).toInstant().toString(),r.getString("purpose")),user);
+    }
+    private <T> T procedure(Supplier<T> operation) {
+        try { return operation.get(); }
+        catch (DataAccessException failure) {
+            for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                if (cause instanceof java.sql.SQLException sql && sql.getSQLState() != null && Set.of("GS400","GS401","GS402","GS403","GS404","GS409").contains(sql.getSQLState())) {
+                    String message = sql.getMessage().split("\\R", 2)[0].replaceFirst("^ERROR:\\s*", "");
+                    throw new CommerceException(HttpStatus.valueOf(Integer.parseInt(sql.getSQLState().substring(2))), message);
+                }
+            }
+            throw failure;
+        }
+    }
     static String amount(BigDecimal value) { return value.setScale(2).toPlainString(); }
     private static final RowMapper<Account> ACCOUNT = (r, n) -> new Account(r.getObject("id", UUID.class),
         r.getString("username"), r.getString("email"), r.getString("role"), r.getString("status"), r.getBigDecimal("balance"));
@@ -91,6 +135,34 @@ public class CommerceRepository {
     public boolean owns(UUID user, UUID game) {
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM game_bought WHERE user_id=? AND game_id=?)", Boolean.class, user, game));
     }
+    public LibraryData library(UUID user) {
+        return new LibraryData(
+            jdbc.query("SELECT id,name FROM library_collections WHERE user_id=? ORDER BY lower(name),id",
+                (r,n) -> new LibraryCollection(r.getObject("id", UUID.class), r.getString("name")), user),
+            jdbc.query("SELECT collection_id,game_id FROM library_collection_games WHERE user_id=? ORDER BY collection_id,game_id",
+                (r,n) -> new LibraryMembership(r.getObject("collection_id", UUID.class), r.getObject("game_id", UUID.class)), user),
+            jdbc.query("SELECT game_id,note,hidden FROM library_preferences WHERE user_id=? ORDER BY game_id",
+                (r,n) -> new LibraryPreference(r.getObject("game_id", UUID.class), r.getString("note"), r.getBoolean("hidden")), user));
+    }
+    public LibraryCollection createCollection(UUID user, String name) {
+        UUID id = procedure(() -> jdbc.queryForObject("CALL public.sp_create_library_collection(?,?,NULL)", (r,n) -> r.getObject("p_collection_id", UUID.class), user, name));
+        return new LibraryCollection(id, name);
+    }
+    public void renameCollection(UUID user, UUID id, String name) {
+        procedure(() -> jdbc.update("CALL public.sp_rename_library_collection(?,?,?)", user, id, name));
+    }
+    public void deleteCollection(UUID user, UUID id) {
+        procedure(() -> jdbc.update("CALL public.sp_delete_library_collection(?,?)", user, id));
+    }
+    public void addCollectionGame(UUID user, UUID collection, UUID game) {
+        procedure(() -> jdbc.update("CALL public.sp_set_library_membership(?,?,?,?)", user, collection, game, true));
+    }
+    public void removeCollectionGame(UUID user, UUID collection, UUID game) {
+        procedure(() -> jdbc.update("CALL public.sp_set_library_membership(?,?,?,?)", user, collection, game, false));
+    }
+    public void saveLibraryPreference(UUID user, UUID game, String note, boolean hidden) {
+        procedure(() -> jdbc.update("CALL public.sp_save_library_preference(?,?,?,?)", user, game, note, hidden));
+    }
     public List<WishlistEntry> wishlist(UUID user) {
         return jdbc.query("SELECT game_id, created_at FROM wishlists WHERE user_id=? ORDER BY created_at DESC", WISHLIST_ENTRY, user);
     }
@@ -132,29 +204,55 @@ public class CommerceRepository {
     public Optional<Transaction> byRequest(UUID user, UUID key) {
         return jdbc.query("SELECT * FROM transactions WHERE user_id=? AND idempotency_key=?", TRANSACTION, user, key).stream().findFirst();
     }
-    public Transaction record(UUID user, UUID game, String type, BigDecimal amount, UUID key) {
-        return jdbc.queryForObject("INSERT INTO transactions(user_id,game_id,type,amount,status,idempotency_key) VALUES (?,?,?,?,'SUCCESSED',?) RETURNING *",
-            TRANSACTION, user, game, type, amount, key);
+    private Transaction transaction(UUID id, UUID user) {
+        return jdbc.queryForObject("SELECT * FROM transactions WHERE id=? AND user_id=?", TRANSACTION, id, user);
     }
-    public void balance(UUID user, BigDecimal amount) { jdbc.update("UPDATE users SET balance=? WHERE id=?", amount, user); }
+    public Transaction depositWallet(UUID user, BigDecimal amount, UUID key) {
+        UUID id = procedure(() -> jdbc.queryForObject("CALL public.sp_deposit_wallet(?,?,?,NULL)", (r,n) -> r.getObject("p_transaction_id", UUID.class), user, amount, key));
+        return transaction(id, user);
+    }
+    public UUID createWithdrawalCheckout(UUID user, BigDecimal amount, UUID key) {
+        return procedure(() -> jdbc.queryForObject("CALL public.sp_create_withdrawal_checkout(?,?,?,NULL)", (r,n) -> r.getObject("p_id", UUID.class), user, key, amount));
+    }
+    public boolean isWithdrawalCheckout(UUID user, UUID id) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM public.checkout_sessions WHERE user_id=? AND id=? AND purpose='WITHDRAWAL')", Boolean.class, user, id));
+    }
+    public void confirmWithdrawal(UUID user, UUID id, String bank, String account) {
+        procedure(() -> jdbc.update("CALL public.sp_confirm_withdrawal_checkout(?,?,?,?)", user, id, bank, account));
+    }
+    public Transaction purchaseGame(UUID user, UUID game, UUID key, BigDecimal expectedAmount) {
+        UUID id = procedure(() -> jdbc.queryForObject("CALL public.sp_purchase_game(?,?,?,?,NULL)", (r,n) -> r.getObject("p_transaction_id", UUID.class), user, game, key, expectedAmount));
+        return transaction(id, user);
+    }
     public List<Review> reviews(Account user) {
         return jdbc.query("SELECT r.* FROM reviews r JOIN games g ON g.id=r.game_id WHERE " + VISIBLE + " ORDER BY r.id", REVIEW,
             user.role().equals("ADMINISTRATOR"), user.id(), user.id());
     }
     public Review saveReview(UUID user, UUID game, BigDecimal rating, String content) {
-        return jdbc.queryForObject("INSERT INTO reviews(user_id,game_id,rating,content) VALUES (?,?,?,?) ON CONFLICT(user_id,game_id) DO UPDATE SET rating=EXCLUDED.rating,content=EXCLUDED.content RETURNING *",
-            REVIEW, user, game, rating, content);
+        UUID id = procedure(() -> jdbc.queryForObject("CALL public.sp_save_game_review(?,?,?,?,NULL)", (r,n) -> r.getObject("p_review_id", UUID.class), user, game, rating, content));
+        return review(id, user).orElseThrow();
     }
     public Optional<Review> review(UUID id, UUID user) {
         return jdbc.query("SELECT * FROM reviews WHERE id=? AND user_id=?", REVIEW, id, user).stream().findFirst();
     }
-    public void deleteReview(UUID id, UUID user) { jdbc.update("DELETE FROM reviews WHERE id=? AND user_id=?", id, user); }
-    public List<Transaction> revenue(Account user, OffsetDateTime from, OffsetDateTime until) {
-        String sql = "SELECT t.* FROM transactions t JOIN games g ON g.id=t.game_id WHERE t.type='BUY' AND t.status='SUCCESSED'";
+    public void deleteReview(UUID id, UUID user) { procedure(() -> jdbc.update("CALL public.sp_delete_game_review(?,?)", user, id)); }
+    public List<RevenueSale> revenue(Account user, OffsetDateTime from, OffsetDateTime until) {
+        String sql = "SELECT * FROM public.v_game_sale_revenue WHERE true";
         List<Object> args = new ArrayList<>();
-        if (!user.role().equals("ADMINISTRATOR")) { sql += " AND g.developer_id=?"; args.add(user.id()); }
-        if (from != null) { sql += " AND t.created_at>=?"; args.add(from); }
-        if (until != null) { sql += " AND t.created_at<?"; args.add(until); }
-        return jdbc.query(sql + " ORDER BY t.created_at,t.id", TRANSACTION, args.toArray());
+        if (!user.role().equals("ADMINISTRATOR")) { sql += " AND developer_id=?"; args.add(user.id()); }
+        if (from != null) { sql += " AND created_at>=?"; args.add(from); }
+        if (until != null) { sql += " AND created_at<?"; args.add(until); }
+        return jdbc.query(sql + " ORDER BY created_at,id", (r,n) -> new RevenueSale(r.getObject("id",UUID.class),r.getObject("game_id",UUID.class),
+            r.getString("type"),amount(r.getBigDecimal("amount")),r.getString("status"),r.getObject("created_at",OffsetDateTime.class).toInstant().toString(),
+            r.getObject("developer_id",UUID.class),r.getString("game_title"),r.getString("developer_name"),amount(r.getBigDecimal("platform_fee")),amount(r.getBigDecimal("developer_revenue")),r.getString("beneficiary_type")),args.toArray());
+    }
+    public List<PublicationFee> publicationFees(Account user, OffsetDateTime from, OffsetDateTime until) {
+        String sql="SELECT f.*,g.title,u.username FROM public.game_publication_fees f JOIN games g ON g.id=f.game_id JOIN users u ON u.id=f.developer_id WHERE true";
+        List<Object> args=new ArrayList<>();
+        if(!user.role().equals("ADMINISTRATOR")){sql+=" AND f.developer_id=?";args.add(user.id());}
+        if(from!=null){sql+=" AND f.created_at>=?";args.add(from);}
+        if(until!=null){sql+=" AND f.created_at<?";args.add(until);}
+        return jdbc.query(sql+" ORDER BY f.created_at,f.game_id",(r,n)->new PublicationFee(r.getObject("game_id",UUID.class),r.getString("title"),r.getObject("developer_id",UUID.class),
+            r.getString("username"),amount(r.getBigDecimal("amount")),amount(r.getBigDecimal("usd_amount")),r.getObject("created_at",OffsetDateTime.class).toInstant().toString()),args.toArray());
     }
 }

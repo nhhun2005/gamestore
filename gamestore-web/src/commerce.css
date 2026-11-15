@@ -448,6 +448,11 @@ button:disabled {
   letter-spacing: 1px;
   margin-bottom: 20px;
 }
+.library-management { margin: 12px 0 18px; flex-wrap: wrap; }
+.library-management .commerce-button { white-space: normal; }
+.library-detail-content > .commerce-actions { flex-wrap: wrap; }
+.library-private-note { border-left: 3px solid #66c0f4; padding: 4px 16px; margin: 20px 0; background: #142333; }
+.library-private-note p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .library-sidebar input,
 .library-sidebar select {
   margin-bottom: 12px;
@@ -757,3 +762,10 @@ button.steam-logo {
     scroll-behavior: auto !important;
   }
 }
+.commerce-notice.app-toast { position: fixed; z-index: 1000; right: 24px; bottom: 24px; width: min(420px,calc(100vw - 32px)); margin: 0; padding: 16px 48px 16px 20px; box-shadow: 0 8px 32px #0007; border-left: 3px solid #a4d007; border-radius: 3px; background: #253947; color: #e1f0d2; }
+.app-toast button { position: absolute; right: 10px; top: 8px; border: 0; background: transparent; color: #c6d4df; font-size: 24px; cursor: pointer; }
+.publication-quote { padding: 16px; margin: 16px 0; background: #142333; border: 1px solid #405a70; }
+.pending-checkout-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; padding: 16px 0; border-top: 1px solid #35506a; }
+.pending-checkout-row small { display: block; margin-top: 7px; color: #8aa6bd; font-size: 12px; }
+.transaction-status.CANCELLED,.transaction-status.EXPIRED { background: #394351; color: #c4cbd3; }
+.steam-library .library-hidden-shortcut { margin: 0 0 18px; width: 100%; border: 1px solid #52627c; background: #354258; color: #d1e0ef; text-align: left; font-size: 12px; }

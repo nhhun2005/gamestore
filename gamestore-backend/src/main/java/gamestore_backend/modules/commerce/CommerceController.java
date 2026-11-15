@@ -16,6 +16,34 @@ public class CommerceController {
     public CommerceController(CommerceService service) { this.service = service; }
     @GetMapping("/state") public State state(Authentication auth) { return service.state(auth); }
     @GetMapping("/wallet") public AccountView wallet(Authentication auth) { return service.wallet(auth); }
+    @PostMapping("/checkouts") @ResponseStatus(HttpStatus.CREATED)
+    public Checkout createCheckout(Authentication auth,@Valid @RequestBody CheckoutRequest input,@RequestHeader("Idempotency-Key") UUID key) { return service.createCheckout(auth,input,key); }
+    @PostMapping("/wallet/checkouts") @ResponseStatus(HttpStatus.CREATED)
+    public Checkout createTopUpCheckout(Authentication auth,@Valid @RequestBody DepositRequest input,@RequestHeader("Idempotency-Key") UUID key) { return service.createTopUpCheckout(auth,input.amount(),key); }
+    @GetMapping("/checkouts/{id}") public Checkout checkout(Authentication auth,@PathVariable UUID id) { return service.checkout(auth,id); }
+    @PostMapping("/checkouts/{id}/confirm")
+    public Checkout confirmCheckout(Authentication auth,@PathVariable UUID id,@Valid @RequestBody ConfirmCheckoutRequest input) { return service.confirmCheckout(auth,id,input); }
+    @PostMapping("/checkouts/{id}/cancel")
+    public Checkout cancelCheckout(Authentication auth,@PathVariable UUID id) { return service.cancelCheckout(auth,id); }
+    @GetMapping("/library") public LibraryData library(Authentication auth) { return service.library(auth); }
+    @PostMapping("/library/collections") @ResponseStatus(HttpStatus.CREATED)
+    public LibraryCollection createCollection(Authentication auth, @Valid @RequestBody CollectionRequest request) {
+        return service.createCollection(auth, request.name());
+    }
+    @PutMapping("/library/collections/{id}")
+    public LibraryCollection renameCollection(Authentication auth, @PathVariable UUID id, @Valid @RequestBody CollectionRequest request) {
+        return service.renameCollection(auth, id, request.name());
+    }
+    @DeleteMapping("/library/collections/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteCollection(Authentication auth, @PathVariable UUID id) { service.deleteCollection(auth, id); }
+    @PutMapping("/library/collections/{id}/games/{gameId}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void addCollectionGame(Authentication auth, @PathVariable UUID id, @PathVariable UUID gameId) { service.collectionGame(auth, id, gameId, true); }
+    @DeleteMapping("/library/collections/{id}/games/{gameId}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeCollectionGame(Authentication auth, @PathVariable UUID id, @PathVariable UUID gameId) { service.collectionGame(auth, id, gameId, false); }
+    @PutMapping("/library/games/{gameId}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void saveLibraryPreference(Authentication auth, @PathVariable UUID gameId, @Valid @RequestBody LibraryPreferenceRequest request) {
+        service.saveLibraryPreference(auth, gameId, request.note(), request.hidden());
+    }
     @GetMapping("/transactions")
     public TransactionPage transactions(Authentication auth, @RequestParam(required=false) String type,
         @RequestParam(required=false) String status, @RequestParam(defaultValue="0") int page,
@@ -31,6 +59,11 @@ public class CommerceController {
         @RequestHeader("Idempotency-Key") UUID key) {
         return service.deposit(auth, request.amount(), key, request.challenge_id(), request.code());
     }
+    @PostMapping("/wallet/withdrawals") @ResponseStatus(HttpStatus.CREATED)
+    public Checkout withdraw(Authentication auth, @Valid @RequestBody DepositRequest request,
+        @RequestHeader("Idempotency-Key") UUID key) {
+        return service.withdraw(auth, request.amount(), key);
+    }
     @PostMapping("/purchases") @ResponseStatus(HttpStatus.CREATED)
     public Transaction purchase(Authentication auth, @Valid @RequestBody PurchaseRequest request,
         @RequestHeader("Idempotency-Key") UUID key) { return service.purchase(auth, request.game_id(), key, request.expected_amount()); }
@@ -43,6 +76,9 @@ public class CommerceController {
     @GetMapping("/revenue")
     public List<RevenueSale> revenue(Authentication auth, @RequestParam(required=false) LocalDate from,
         @RequestParam(required=false) LocalDate to) { return service.revenue(auth, from, to); }
+    @GetMapping("/revenue/fees")
+    public List<PublicationFee> publicationFees(Authentication auth, @RequestParam(required=false) LocalDate from,
+        @RequestParam(required=false) LocalDate to) { return service.publicationFees(auth,from,to); }
 
     @GetMapping("/wishlist")
     public List<WishlistEntry> wishlist(Authentication auth) {

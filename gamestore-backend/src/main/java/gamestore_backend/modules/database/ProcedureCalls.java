@@ -43,6 +43,7 @@ public class ProcedureCalls {
                 HttpStatus status=switch(Objects.toString(sqlError.getSQLState(),"")) {
                     case "G0400" -> HttpStatus.BAD_REQUEST;
                     case "G0401" -> HttpStatus.UNAUTHORIZED;
+                    case "G0402" -> HttpStatus.PAYMENT_REQUIRED;
                     case "G0403" -> HttpStatus.FORBIDDEN;
                     case "G0404" -> HttpStatus.NOT_FOUND;
                     case "G0409" -> HttpStatus.CONFLICT;

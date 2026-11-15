@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PendingCheckouts from "../../components/commerce/PendingCheckouts";
 import { useCommerce } from "../../components/commerce/context";
 import {
   PageHeader,
@@ -36,6 +37,7 @@ export default function TransactionsPage() {
       <PageHeader eyebrow="TÀI KHOẢN / GIAO DỊCH" title="Lịch sử giao dịch">
         Tiền nạp và các trò chơi bạn đã mua, trong một dòng lịch sử.
       </PageHeader>
+      <PendingCheckouts />
       <div className="commerce-filters">
         <label>
           Loại giao dịch
@@ -85,6 +87,7 @@ export default function TransactionsPage() {
       <TransactionTable
         transactions={rows.slice((current - 1) * 8, current * 8)}
         games={state.games}
+        checkouts={state.checkout_sessions}
       />
       <div className="commerce-pagination">
         <button

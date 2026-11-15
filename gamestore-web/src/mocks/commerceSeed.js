@@ -87,6 +87,7 @@ export function createSeed() {
     transactions: [],
     game_bought: [],
     reviews: [],
+    library: { collections: [], memberships: [], preferences: [] },
     wishlist: [],
   };
 }

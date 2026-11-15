@@ -1,0 +1,247 @@
+.steam-main-content.steam-library {
+  max-width: 1600px;
+  padding: 0;
+  background: #23262e;
+  min-height: 78vh;
+  color: #b8bccc;
+  border: 1px solid #343843;
+  margin-top: 24px;
+}
+.steam-library-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 24px;
+  background: linear-gradient(#303641, #242830);
+  border-bottom: 1px solid #12151a;
+}
+.steam-library-nav h1 {
+  color: #e4e6eb;
+  font-size: 22px;
+  margin: 0;
+}
+.steam-library-nav span {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #8e98aa;
+}
+.steam-library-nav a {
+  margin-left: auto;
+  font-size: 13px;
+  color: #a9c9df;
+}
+.steam-library .library-layout {
+  grid-template-columns: 255px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+}
+.steam-library .library-sidebar {
+  background: #20232b;
+  padding: 18px 10px;
+  border-right: 1px solid #15181e;
+  max-height: none;
+}
+.steam-library .library-sidebar h3 {
+  padding: 0 8px 12px;
+  color: #a8b4c5;
+  font-size: 12px;
+  letter-spacing: 0.7px;
+}
+.steam-library .library-sidebar > label {
+  font-size: 12px;
+  color: #939dad;
+}
+.steam-library .library-sidebar .commerce-input {
+  border: 1px solid #3d424e;
+  border-radius: 2px;
+  background: #171a21;
+  color: #bdc8d8;
+  font-size: 12px;
+  padding: 9px;
+  min-width: 0;
+}
+.steam-library .library-management {
+  gap: 4px;
+}
+.steam-library .library-management .commerce-button {
+  background: #343b47;
+  border: 0;
+  border-radius: 2px;
+  font-size: 11px;
+  padding: 7px;
+}
+.steam-library .library-entry {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin: 2px 0;
+  min-height: 39px;
+  color: #b5bdcd;
+  font-size: 13px;
+  text-align: left;
+}
+.steam-library .library-entry.selected {
+  background: #3c4c63;
+  color: #fff;
+  border: 0;
+}
+.steam-library .library-entry:hover {
+  background: #303846;
+}
+.steam-library .library-entry .game-art {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+.steam-library .library-entry .game-art span {
+  display: none;
+}
+.steam-library .library-detail {
+  background: linear-gradient(130deg, #303742, #252931 55%);
+  padding: 0;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+}
+.steam-library-hero {
+  position: relative;
+  height: 330px;
+  background: #171c26;
+}
+.steam-library .steam-library-hero .large-art {
+  width: 100%;
+  height: 100%;
+  opacity: 0.85;
+}
+.steam-library-hero .game-art > span {
+  display: none;
+}
+.steam-library-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 20%, #242933e6);
+  pointer-events: none;
+}
+.steam-library-hero > div:last-child {
+  position: absolute;
+  z-index: 1;
+  bottom: 24px;
+  left: 28px;
+  right: 20px;
+}
+.steam-library-hero small {
+  color: #bcc8d9;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+.steam-library .steam-library-hero h2 {
+  font-size: clamp(26px, 3vw, 44px);
+  color: #fff;
+  margin: 10px 0 0;
+  text-shadow: 0 2px 10px #000;
+}
+.steam-library .library-detail-content {
+  padding: 0 28px 30px;
+}
+.steam-library-toolbar {
+  margin: 0 -28px 26px;
+  padding: 16px 28px;
+  background: #1e222bb3;
+  border-top: 1px solid #535b6b55;
+  border-bottom: 1px solid #151921;
+  gap: 9px;
+}
+.steam-library-toolbar .commerce-button {
+  font-size: 12px;
+  background: #3a4351;
+  border: 0;
+  border-radius: 2px;
+  color: #d7deeb;
+}
+.steam-library-toolbar .commerce-button.primary {
+  background: linear-gradient(100deg, #81ad0b, #559115);
+  color: #fff;
+  font-size: 18px;
+  padding: 12px 28px;
+  min-width: 150px;
+}
+.steam-library .library-detail-content > p {
+  line-height: 1.65;
+  color: #aeb7c7;
+}
+.steam-library .commerce-section-title {
+  border-bottom: 1px solid #46505f;
+  padding-bottom: 14px;
+  margin-top: 30px;
+}
+.steam-library .commerce-section-title h3 {
+  color: #d7deea;
+  font-size: 18px;
+}
+.steam-library .commerce-section-title span {
+  font-size: 12px;
+}
+.steam-library .steam-review {
+  background: #1d222c;
+  border-top-color: #4a5363;
+}
+.steam-library .steam-reviews {
+  margin-bottom: 20px;
+}
+@media (max-width: 800px) {
+  .steam-library .library-layout {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  .steam-library-nav {
+    gap: 16px;
+  }
+  .steam-library-nav span {
+    display: none;
+  }
+  .steam-library-hero {
+    height: 260px;
+  }
+  .steam-library .library-detail-content {
+    padding: 0 18px 24px;
+  }
+  .steam-library-toolbar {
+    margin: 0 -18px 20px;
+    padding: 14px 18px;
+  }
+}
+@media (max-width: 600px) {
+  .steam-main-content.steam-library {
+    margin: 12px 8px;
+    width: auto;
+  }
+  .steam-library .library-layout {
+    grid-template-columns: 1fr;
+  }
+  .steam-library .library-sidebar {
+    border-bottom: 1px solid #111;
+  }
+  .steam-library .library-entry {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    margin-right: 4px;
+  }
+  .steam-library .library-entry span {
+    overflow-wrap: anywhere;
+  }
+  .steam-library-hero {
+    height: 220px;
+  }
+  .steam-library-hero > div:last-child {
+    left: 18px;
+  }
+  .steam-library .commerce-section-title {
+    display: block;
+  }
+}

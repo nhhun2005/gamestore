@@ -26,7 +26,10 @@ export default async function setup() {
     throw Error(
       "Start gamestore-backend/scripts/run-live-test-server.ps1 before running live tests.",
     );
-  const password = "live-integration-test-only";
+  // Only isolated local test DBs are used. Commerce fixtures start verified;
+  // registration/email delivery is tested separately, never using real SMTP here.
+  const password = "test-password";
+  const passwordHash = '$2a$10$zv7/eLPjlJ/c3cNSPHOOOe0ve4AZ7k/luyv2rwOonSr9wT4wLV59W';
   const suffix = `${Date.now()}`;
   function executeSql(sql) {
     execFileSync(
@@ -38,9 +41,7 @@ export default async function setup() {
   async function account(name) {
     const username = `${name}-${suffix}`;
     const id = randomUUID();
-    // Test-only BCrypt for the fixed fixture password. Registration now needs email verification.
-    const hash = "$2a$10$S0CnXqZGRFWTUc2FXS./B.W2U8lGFRSLyjTX2qKdq4iq.fSj8mnQi";
-    executeSql(`INSERT INTO users(id,username,email,password,status) VALUES ('${id}','${username}','${username}@example.test','${hash}','VERIFIED')`);
+    executeSql(`INSERT INTO users(id,username,email,password,role,status) VALUES ('${id}','${username}','${username}@example.test','${passwordHash}','USER','VERIFIED')`);
     const response = await fetch(`${api}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,22 +62,33 @@ export default async function setup() {
   const other = await account("live-other");
   const admin = await account("live-admin");
   const applicant = await account("live-applicant");
+  const libraryUser = await account('live-library');
+  const payUser = await account('live-payment');
+  const payDeveloper = await account('live-payment-dev');
+  const payGame = { id: randomUUID(), title: `Live Checkout ${suffix}`, price: '249000.00' };
+  const payQrGame = { id: randomUUID(), title: `Live QR Checkout ${suffix}`, price: '129000.00' };
+  const libraryGame = { id: randomUUID(), title: `Live Library ${suffix}` };
   const garden = { id: randomUUID(), title: `Live Garden ${suffix}` };
   const adventure = { id: randomUUID(), title: `Live Adventure ${suffix}` };
   const promo = randomUUID();
-  const sql = `BEGIN;
-    UPDATE users SET role='DEVELOPER' WHERE id IN ('${developer.id}','${other.id}');
+  const fixtureSql = `BEGIN;
+    UPDATE users SET role='DEVELOPER' WHERE id IN ('${developer.id}','${other.id}','${payDeveloper.id}');
     UPDATE users SET role='ADMINISTRATOR' WHERE id='${admin.id}';
     INSERT INTO promotions(id,name,discount,status) VALUES ('${promo}','Live test discount',25,'ENABLED');
     INSERT INTO games(id,developer_id,title,description,price,status,promotion_id,cover_image_url) VALUES
       ('${garden.id}','${developer.id}','${garden.title}','Real database integration test game',200000,'AVAILABLE','${promo}','https://cdn.akamai.steamstatic.com/steam/apps/413150/header.jpg'),
       ('${adventure.id}','${other.id}','${adventure.title}','Another developer real test game',100000,'AVAILABLE',NULL,NULL);
-    INSERT INTO game_submissions(game_id,submitted_by) VALUES ('${garden.id}','${developer.id}'),('${adventure.id}','${other.id}');
+    INSERT INTO games(id,developer_id,title,description,price,status) VALUES ('${libraryGame.id}','${admin.id}','${libraryGame.title}','Library integration test',0,'AVAILABLE');
+    INSERT INTO games(id,developer_id,title,description,price,status) VALUES
+      ('${payGame.id}','${payDeveloper.id}','${payGame.title}','Hosted checkout integration',249000,'AVAILABLE'),
+      ('${payQrGame.id}','${payDeveloper.id}','${payQrGame.title}','QR checkout integration',129000,'AVAILABLE');
+    INSERT INTO game_submissions(game_id,submitted_by) VALUES ('${garden.id}','${developer.id}'),('${adventure.id}','${other.id}'),('${libraryGame.id}','${admin.id}');
+    INSERT INTO transactions(user_id,game_id,type,amount,status) VALUES ('${libraryUser.id}','${libraryGame.id}','BUY',0,'SUCCESSED');
     COMMIT;`;
-  executeSql(sql);
+  executeSql(fixtureSql);
   mkdirSync("output", { recursive: true });
   writeFileSync(
     "output/live-fixture.json",
-    JSON.stringify({ api, buyer, developer, admin, applicant, garden, adventure }),
+    JSON.stringify({ api, buyer, developer, admin, applicant, garden, adventure, libraryUser, libraryGame, payUser, payDeveloper, payGame, payQrGame }),
   );
 }

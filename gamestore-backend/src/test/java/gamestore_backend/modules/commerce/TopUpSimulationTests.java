@@ -63,14 +63,12 @@ class TopUpSimulationTests {
         Fixture() {
             when(repository.account(eq("player"), anyBoolean())).thenAnswer(inv -> Optional.of(account.get()));
             when(repository.byRequest(eq(user), any(UUID.class))).thenAnswer(inv -> Optional.ofNullable(receipts.get(inv.getArgument(1))));
-            doAnswer(inv -> {
+            when(repository.depositWallet(eq(user), any(BigDecimal.class), any(UUID.class))).thenAnswer(inv -> {
+                BigDecimal value = inv.getArgument(1);
+                UUID key = inv.getArgument(2);
                 Account a = account.get();
-                account.set(new Account(user, a.username(), a.email(), a.role(), a.status(), inv.getArgument(1)));
-                return null;
-            }).when(repository).balance(eq(user), any(BigDecimal.class));
-            when(repository.record(eq(user), isNull(), eq("IN"), any(BigDecimal.class), any(UUID.class))).thenAnswer(inv -> {
-                UUID key = inv.getArgument(4);
-                var row = new Transaction(UUID.randomUUID(), user, null, "IN", ((BigDecimal)inv.getArgument(3)).toPlainString(), "SUCCESSED", Instant.now().toString(), key);
+                account.set(new Account(user, a.username(), a.email(), a.role(), a.status(), a.balance().add(value)));
+                var row = new Transaction(UUID.randomUUID(), user, null, "IN", value.toPlainString(), "SUCCESSED", Instant.now().toString(), key);
                 receipts.put(key, row);
                 return row;
             });
@@ -80,13 +78,12 @@ class TopUpSimulationTests {
     @Test void creatingAndRejectingQrNeverCreditsWallet() {
         var f = new Fixture();
         var qr = f.service.createTopUpChallenge(f.auth, amount);
-        verify(f.repository, never()).balance(any(), any());
-        verify(f.repository, never()).record(any(), any(), any(), any(), any());
+        verify(f.repository, never()).depositWallet(any(), any(), any());
         fails(() -> f.service.deposit(f.auth, amount, qr.challenge_id(), null, null), 400);
         fails(() -> f.service.deposit(f.auth, amount, UUID.randomUUID(), qr.challenge_id(), qr.code()), 400);
         fails(() -> f.service.deposit(f.auth, amount, qr.challenge_id(), qr.challenge_id(), "INCORRECT"), 400);
         fails(() -> f.service.deposit(f.auth, BigDecimal.ONE, qr.challenge_id(), qr.challenge_id(), qr.code()), 409);
-        verify(f.repository, never()).balance(any(), any());
+        verify(f.repository, never()).depositWallet(any(), any(), any());
         assertEquals(new BigDecimal("100000.00"), f.account.get().balance());
     }
 
@@ -98,7 +95,7 @@ class TopUpSimulationTests {
         var retry = f.service.deposit(f.auth, amount, qr.challenge_id(), qr.challenge_id(), qr.code());
         assertEquals(first.id(), retry.id());
         assertEquals(new BigDecimal("600000.00"), f.account.get().balance());
-        verify(f.repository, times(1)).balance(eq(f.user), any());
+        verify(f.repository, times(1)).depositWallet(eq(f.user), any(), any());
         fails(() -> f.service.deposit(f.auth, BigDecimal.TEN, qr.challenge_id(), qr.challenge_id(), qr.code()), 409);
     }
 
@@ -111,7 +108,7 @@ class TopUpSimulationTests {
         f.account.set(new Account(a.id(), a.username(), a.email(), a.role(), "BANNED", a.balance()));
         fails(() -> f.service.createTopUpChallenge(f.auth, amount), 403);
         fails(() -> f.service.deposit(f.auth, amount, old.challenge_id(), old.challenge_id(), old.code()), 403);
-        verify(f.repository, never()).balance(any(), any());
+        verify(f.repository, never()).depositWallet(any(), any(), any());
     }
 
     @Test void disabledInvalidAndUnauthenticatedRequestsAreRejectedWithoutCredit() {
@@ -120,6 +117,6 @@ class TopUpSimulationTests {
         fails(() -> f.service.createTopUpChallenge(null, amount), 401);
         for (var value : List.of(BigDecimal.ZERO, new BigDecimal("-1"), new BigDecimal("0.001"), new BigDecimal("100000001")))
             fails(() -> f.service.createTopUpChallenge(f.auth, value), 400);
-        verify(f.repository, never()).balance(any(), any());
+        verify(f.repository, never()).depositWallet(any(), any(), any());
     }
 }

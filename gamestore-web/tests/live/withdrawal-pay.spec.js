@@ -1,0 +1,50 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+test('developer and admin withdraw through hosted bank sessions with resume and cancellation', async ({ page, request }) => {
+  test.setTimeout(120000);
+  const f = JSON.parse(readFileSync('output/live-fixture.json', 'utf8'));
+  for (const publisher of [f.payDeveloper, f.admin]) {
+    await page.goto('/login');
+    await page.getByPlaceholder('Nhập username hoặc email...').fill(publisher.username);
+    await page.getByPlaceholder('••••••••').fill(publisher.password);
+    await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+    await expect(page).toHaveURL(publisher.id === f.admin.id ? /admin\/revenue/ : /store/);
+    const token = await page.evaluate(() => localStorage.getItem('steam_jwt_token'));
+    const headers = { Authorization: `Bearer ${token}`, 'Idempotency-Key': crypto.randomUUID() };
+    const before = await (await request.get(`${f.api}/commerce/wallet`, { headers })).json();
+    const funding = await request.post(`${f.api}/commerce/wallet/checkouts`, { headers, data: { amount: '300000' } });
+    expect(funding.status()).toBe(201);
+    const topup = await funding.json();
+    expect((await request.post(`${f.api}/commerce/checkouts/${topup.id}/confirm`, { headers, data: { method: 'QR', bank: 'NCB', qr_code: new URL(topup.qr_payload).searchParams.get('code') } })).ok()).toBeTruthy();
+    await page.goto('/wallet');
+    await page.getByRole('button', { name: 'Rút tiền', exact: true }).click();
+    await page.getByLabel('Số tiền rút (VND)').fill('100000');
+    await page.getByRole('button', { name: 'Tiếp tục rút tiền', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Chọn ngân hàng nhận tiền' })).toBeVisible();
+    const checkoutUrl = page.url();
+    const logos = page.locator('.gs-pay-bank-logo');
+    await expect(logos).toHaveCount(4);
+    await expect.poll(() => logos.evaluateAll((images) => images.every((i) => i.complete && i.naturalWidth > 0))).toBe(true);
+    await page.getByRole('link', { name: 'Quay lại ví', exact: true }).click();
+    await page.getByRole('region', { name: 'Đơn rút tiền đang chờ' }).getByRole('link', { name: 'Tiếp tục rút tiền' }).click();
+    await expect(page).toHaveURL(checkoutUrl);
+    await page.getByRole('radio', { name: 'Vietcombank', exact: true }).check();
+    await page.getByRole('button', { name: 'Dùng tài khoản thành công', exact: true }).click();
+    await page.screenshot({ path: `output/playwright/withdrawal-${publisher.id === f.admin.id ? 'admin' : 'developer'}.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Xác nhận rút 100.000 ₫', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Rút tiền thành công', exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Rút tiền thành công', exact: true })).toBeVisible();
+    const after = await (await request.get(`${f.api}/commerce/wallet`, { headers })).json();
+    expect(Number(after.balance)).toBe(Number(before.balance) + 200000);
+    await page.getByRole('link', { name: 'Về ví của tôi' }).click();
+    await page.getByRole('button', { name: 'Rút tiền', exact: true }).click();
+    await page.getByLabel('Số tiền rút (VND)').fill('20000');
+    await page.getByRole('button', { name: 'Tiếp tục rút tiền', exact: true }).click();
+    await page.getByRole('button', { name: 'Hủy yêu cầu', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Đã hủy rút tiền', exact: true })).toBeVisible();
+    expect((await (await request.get(`${f.api}/commerce/wallet`, { headers })).json()).balance).toBe(after.balance);
+    await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click();
+  }
+});

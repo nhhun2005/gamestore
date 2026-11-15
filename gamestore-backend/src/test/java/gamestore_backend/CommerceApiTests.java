@@ -167,6 +167,50 @@ class CommerceApiTests {
         assertEquals(1, jdbc.queryForObject("SELECT count(*) FROM game_bought WHERE user_id=?", Integer.class, buyer.id()));
         assertTrue(jdbc.queryForObject("SELECT balance FROM users WHERE id=?", BigDecimal.class, buyer.id()).signum() >= 0);
     }
+    @Test void ownedGamesCanBeFavoritedIncludingHiddenGamesAndRemovedWithoutLosingOwnership() throws Exception {
+        tree(send("POST","/api/commerce/purchases",buyer,buy(freeGame),UUID.randomUUID()),201);
+        jdbc.update("UPDATE games SET status='HIDDEN' WHERE id=?",freeGame);
+        assertEquals(204,send("POST","/api/commerce/wishlist/"+freeGame,buyer,null,null).statusCode());
+        assertEquals(204,send("POST","/api/commerce/wishlist/"+freeGame,buyer,null,null).statusCode());
+        JsonNode wishlist=tree(send("GET","/api/commerce/wishlist",buyer,null,null),200);
+        assertEquals(1,wishlist.size()); assertEquals(freeGame.toString(),wishlist.get(0).path("game_id").asText());
+        assertEquals(409,send("POST","/api/commerce/wishlist/"+hiddenGame,buyer,null,null).statusCode());
+        assertEquals(204,send("DELETE","/api/commerce/wishlist/"+freeGame,buyer,null,null).statusCode());
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM game_bought WHERE user_id=? AND game_id=?",Integer.class,buyer.id(),freeGame));
+    }
+    @Test void revenueRoundsHalfCentAndKeepsFreeSalesAtZero() throws Exception {
+        UUID small=game(developer.id(),"Fractional sale","0.05","AVAILABLE",null);
+        tree(send("POST","/api/commerce/purchases",buyer,buy(small),UUID.randomUUID()),201);
+        tree(send("POST","/api/commerce/purchases",buyer,buy(freeGame),UUID.randomUUID()),201);
+        JsonNode rows=tree(send("GET","/api/commerce/revenue",developer,null,null),200);
+        assertEquals(1,rows.size());
+        assertEquals("0.01",rows.get(0).path("platform_fee").asText());
+        assertEquals("0.04",rows.get(0).path("developer_revenue").asText());
+        rows=tree(send("GET","/api/commerce/revenue",admin,null,null),200);
+        JsonNode free=null;
+        for(JsonNode row:rows) if(row.path("game_id").asText().equals(freeGame.toString())) free=row;
+        assertNotNull(free); assertEquals("0.00",free.path("platform_fee").asText()); assertEquals("0.00",free.path("developer_revenue").asText());
+    }
+    @Test void adminOwnedSalesBelongEntirelyToPlatformAndKeepTheirSnapshotAfterRoleChange() throws Exception {
+        fund();
+        tree(send("POST","/api/commerce/purchases",buyer,buy(foreignGame),UUID.randomUUID()),201);
+        JsonNode sale=null;
+        for(JsonNode row:tree(send("GET","/api/commerce/revenue",admin,null,null),200)) if(row.path("game_id").asText().equals(foreignGame.toString())) sale=row;
+        assertNotNull(sale); assertEquals("PLATFORM",sale.path("beneficiary_type").asText());
+        assertEquals("50000.00",sale.path("platform_fee").asText()); assertEquals("0.00",sale.path("developer_revenue").asText());
+        jdbc.update("UPDATE users SET role='DEVELOPER' WHERE id=?",admin.id());
+        JsonNode rows=tree(send("GET","/api/commerce/revenue",admin,null,null),200);
+        assertEquals(1,rows.size()); assertEquals("50000.00",rows.get(0).path("platform_fee").asText());
+        assertEquals("PLATFORM",rows.get(0).path("beneficiary_type").asText());
+    }
+    @Test void developerSaleKeepsNinetyTenAfterDeveloperBecomesAdmin() throws Exception {
+        fund(); tree(send("POST","/api/commerce/purchases",buyer,buy(game),UUID.randomUUID()),201);
+        jdbc.update("UPDATE users SET role='ADMINISTRATOR' WHERE id=?",developer.id());
+        JsonNode sale=null;
+        for(JsonNode row:tree(send("GET","/api/commerce/revenue",developer,null,null),200)) if(row.path("game_id").asText().equals(game.toString())) sale=row;
+        assertNotNull(sale); assertEquals("DEVELOPER",sale.path("beneficiary_type").asText());
+        assertEquals("17500.00",sale.path("platform_fee").asText()); assertEquals("157500.00",sale.path("developer_revenue").asText());
+    }
     @Test void revenueUsesDatabaseRoleDeveloperScopeAndHistoricalAmounts() throws Exception {
         fund();
         tree(send("POST", "/api/commerce/purchases", buyer, buy(game), UUID.randomUUID()), 201);
@@ -176,12 +220,18 @@ class CommerceApiTests {
         JsonNode rows = tree(send("GET", "/api/commerce/revenue?developer_id=" + admin.id(), developer, null, null), 200);
         assertEquals(1, rows.size());
         assertEquals("175000.00", rows.get(0).path("amount").asText());
+        assertEquals("17500.00",rows.get(0).path("platform_fee").asText());
+        assertEquals("157500.00",rows.get(0).path("developer_revenue").asText());
+        assertEquals(developer.id().toString(),rows.get(0).path("developer_id").asText());
         rows = tree(send("GET", "/api/commerce/revenue?from=2099-01-01", developer, null, null), 200);
         assertEquals(0, rows.size());
         assertEquals(400, send("GET", "/api/commerce/revenue?from=2026-12-01&to=2026-01-01", developer, null, null).statusCode());
         rows = tree(send("GET", "/api/commerce/revenue", admin, null, null), 200);
         assertTrue(rows.size() >= 2); // Other test fixtures are isolated users in the same test database.
-        for (JsonNode row : rows) assertEquals("BUY", row.path("type").asText());
+        for (JsonNode row : rows) {
+            assertEquals("BUY", row.path("type").asText());
+            assertEquals(0,new BigDecimal(row.path("amount").asText()).compareTo(new BigDecimal(row.path("platform_fee").asText()).add(new BigDecimal(row.path("developer_revenue").asText()))));
+        }
         jdbc.update("UPDATE users SET role='USER' WHERE id=?", developer.id());
         assertEquals(403, send("GET", "/api/commerce/revenue", developer, null, null).statusCode());
     }
@@ -196,5 +246,59 @@ class CommerceApiTests {
         jdbc.update("UPDATE users SET status='BANNED' WHERE id=?", buyer.id());
         assertEquals(403, send("GET", "/api/commerce/state", buyer, null, null).statusCode());
         assertEquals(403, send("POST", "/api/auth/login", null, "{\"account\":\"" + buyer.username() + "\",\"password\":\"test-password\"}", null).statusCode());
+    }
+
+    JsonNode withdrawal(Login user, String amount, UUID key) throws Exception {
+        return tree(send("POST", "/api/commerce/wallet/withdrawals", user, json.writeValueAsString(Map.of("amount",amount)), key),201);
+    }
+    String withdrawalConfirm(String account) throws Exception {
+        return json.writeValueAsString(Map.of("method","BANK","bank","VIETCOMBANK","recipient_account",account));
+    }
+    @Test void withdrawalRequiresPublisherRoleAndCannotBypassBankSettlement() throws Exception {
+        assertEquals(403,send("POST","/api/commerce/wallet/withdrawals",buyer,"{\"amount\":100}",UUID.randomUUID()).statusCode());
+        jdbc.update("UPDATE users SET balance=100000 WHERE id=?",developer.id());
+        UUID key=UUID.randomUUID();
+        JsonNode c=withdrawal(developer,"60000",key);
+        assertEquals("WITHDRAWAL",c.path("purpose").asText());
+        assertEquals("PENDING",c.path("status").asText());
+        assertEquals(c.path("id"),withdrawal(developer,"60000",key).path("id"));
+        assertEquals(409,send("POST","/api/commerce/wallet/withdrawals",developer,"{\"amount\":50000}",key).statusCode());
+        String path="/api/commerce/checkouts/"+c.path("id").asText();
+        assertEquals(404,send("POST",path+"/confirm",admin,withdrawalConfirm("9704000001"),null).statusCode());
+        assertEquals(400,send("POST",path+"/confirm",developer,"{\"method\":\"QR\",\"bank\":\"NCB\",\"qr_code\":\""+UUID.randomUUID()+"\"}",null).statusCode());
+        assertEquals(0,new BigDecimal("100000").compareTo(jdbc.queryForObject("SELECT balance FROM users WHERE id=?",BigDecimal.class,developer.id())));
+    }
+    @Test void withdrawalSettlesOnceAndOnlyDebitsItsOwnersWallet() throws Exception {
+        for(Login publisher:List.of(developer,admin)) {
+            jdbc.update("UPDATE users SET balance=100000 WHERE id=?",publisher.id());
+            JsonNode c=withdrawal(publisher,"60000",UUID.randomUUID());
+            String path="/api/commerce/checkouts/"+c.path("id").asText()+"/confirm";
+            HttpRequest request=request("POST",path,publisher,withdrawalConfirm("9704000001"),null);
+            var one=http.sendAsync(request,HttpResponse.BodyHandlers.ofString());
+            var two=http.sendAsync(request,HttpResponse.BodyHandlers.ofString());
+            assertEquals("SUCCESSED",tree(one.get(),200).path("status").asText());
+            assertEquals("SUCCESSED",tree(two.get(),200).path("status").asText());
+            assertEquals(0,new BigDecimal("40000").compareTo(jdbc.queryForObject("SELECT balance FROM users WHERE id=?",BigDecimal.class,publisher.id())));
+            assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM transactions WHERE user_id=? AND type='OUT' AND status='SUCCESSED'",Integer.class,publisher.id()));
+        }
+    }
+    @Test void failedCancelledExpiredOrUnderfundedWithdrawalsNeverDebitWallet() throws Exception {
+        jdbc.update("UPDATE users SET balance=100000 WHERE id=?",developer.id());
+        for(String scenario:List.of("DECLINE","CANCEL","EXPIRE","NO_FUNDS")) {
+            JsonNode c=withdrawal(developer,"60000",UUID.randomUUID());
+            String path="/api/commerce/checkouts/"+c.path("id").asText();
+            String expected="FAILED";
+            if(scenario.equals("CANCEL")) {
+                tree(send("POST",path+"/cancel",developer,null,null),200); expected="CANCELLED";
+            } else if(scenario.equals("EXPIRE")) {
+                jdbc.update("UPDATE checkout_sessions SET expires_at=CURRENT_TIMESTAMP-INTERVAL '1 second' WHERE id=?",UUID.fromString(c.path("id").asText()));expected="EXPIRED";
+            } else if(scenario.equals("NO_FUNDS")) jdbc.update("UPDATE users SET balance=50000 WHERE id=?",developer.id());
+            JsonNode result=tree(send("POST",path+"/confirm",developer,withdrawalConfirm(scenario.equals("DECLINE")?"9704000002":"9704000001"),null),200);
+            assertEquals(expected,result.path("status").asText());
+            assertEquals(0,new BigDecimal(scenario.equals("NO_FUNDS")?"50000":"100000").compareTo(jdbc.queryForObject("SELECT balance FROM users WHERE id=?",BigDecimal.class,developer.id())));
+        }
+        assertEquals(402,send("POST","/api/commerce/wallet/withdrawals",developer,"{\"amount\":60000}",UUID.randomUUID()).statusCode());
+        jdbc.update("UPDATE users SET role='USER' WHERE id=?",developer.id());
+        assertEquals(403,send("POST","/api/commerce/wallet/withdrawals",developer,"{\"amount\":100}",UUID.randomUUID()).statusCode());
     }
 }

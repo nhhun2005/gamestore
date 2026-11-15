@@ -138,7 +138,7 @@ function LoginPage({ onAuthSuccess, onNavigate }) {
         </form>
 
         <div className="steam-auth-footer">
-          <span>Mới dùng Steam Store?</span>
+          <span>Mới dùng Game Store?</span>
           <span className="steam-link" onClick={() => onNavigate("register")}>
             Tạo một tài khoản miễn phí
           </span>

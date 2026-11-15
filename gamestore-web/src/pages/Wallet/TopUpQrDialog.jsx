@@ -63,7 +63,7 @@ export default function TopUpQrDialog({ amount, close }) {
     try {
       await service.topUp(challenge.amount, challenge.challenge_id, { challenge_id: challenge.challenge_id, code: code.trim() });
       if (!active.current) return;
-      notify(`Đã nạp ${money(challenge.amount)} vào ví mô phỏng.`);
+      notify(`Đã nạp ${money(challenge.amount)} vào ví thành công.`);
       close();
     } catch (failure) {
       if (active.current) setError(failure.message || "Không thể xác nhận nạp. Vui lòng thử lại.");
@@ -74,13 +74,12 @@ export default function TopUpQrDialog({ amount, close }) {
   }
 
   return (
-    <Modal title="Nạp tiền bằng QR mô phỏng" close={close} busy={busy} error={error}>
+    <Modal title="Nạp tiền bằng QR" close={close} busy={busy} error={error}>
       <div className="wallet-qr">
-        <p className="wallet-qr-simulation">Mô phỏng — không chuyển tiền thật</p>
         <div className="wallet-qr-amount"><span>Số tiền nạp</span><strong>{money(challenge?.amount || amount)}</strong></div>
         <p>Quét QR để lấy mã, sau đó nhập mã bên dưới.</p>
         {loading ? <div className="wallet-qr-placeholder" role="status">Đang tạo mã QR…</div> : qrImage ? (
-          <img className={`wallet-qr-image${expired ? " expired" : ""}`} src={qrImage} alt="QR nạp tiền mô phỏng" width={256} height={256} />
+          <img className={`wallet-qr-image${expired ? " expired" : ""}`} src={qrImage} alt="QR nạp tiền" width={256} height={256} />
         ) : null}
         {challenge && (
           <p className={expired ? "wallet-qr-expired" : "wallet-qr-expiry"} role={expired ? "status" : undefined}>

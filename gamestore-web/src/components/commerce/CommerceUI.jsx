@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { cents, decimal, dayOf, money, priceOf } from "../../services/currency";
-export function Modal({ title, close, busy, error, children }) {
+export function Modal({ title, close, busy, error, children, className = "" }) {
   const dialog = useRef(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -10,7 +10,7 @@ export function Modal({ title, close, busy, error, children }) {
   }, []);
   return (
     <dialog
-      className="commerce-dialog"
+      className={`commerce-dialog ${className}`}
       ref={dialog}
       aria-labelledby="commerce-dialog-title"
       onCancel={(event) => {
@@ -93,7 +93,7 @@ export function EmptyState({ title, children, store = false }) {
     </div>
   );
 }
-export function TransactionTable({ transactions, games }) {
+export function TransactionTable({ transactions, games, checkouts = [] }) {
   if (!transactions.length)
     return <EmptyState title="Chưa có giao dịch phù hợp" />;
   return (
@@ -103,44 +103,74 @@ export function TransactionTable({ transactions, games }) {
           <tr>
             <th>Giao dịch / Thời gian</th>
             <th>Loại</th>
-            <th>Trò chơi</th>
+            <th>Nội dung</th>
             <th>Số tiền</th>
             <th>Trạng thái</th>
+            {checkouts.length > 0 && <th>Thao tác</th>}
           </tr>
         </thead>
         <tbody>
-          {transactions.map((row) => (
-            <tr key={row.id}>
-              <td>
-                <code title={row.id}>{row.id.slice(0, 8)}</code>
-                <small>
-                  {new Date(row.created_at).toLocaleString("vi-VN", {
-                    timeZone: "Asia/Ho_Chi_Minh",
-                  })}
-                </small>
-              </td>
-              <td>
-                {{ IN: "Nạp tiền", OUT: "Chi tiền", BUY: "Mua game" }[row.type]}
-                <small>{row.type}</small>
-              </td>
-              <td>{games.find((g) => g.id === row.game_id)?.title || "—"}</td>
-              <td className={row.type === "IN" ? "positive" : ""}>
-                {row.type === "IN" ? "+" : "−"}
-                {money(row.amount)}
-              </td>
-              <td>
-                <span className={`transaction-status ${row.status}`}>
+          {transactions.map((row) => {
+            const checkout = checkouts.find((c) => c.transaction_id === row.id);
+            const status = checkout?.status || row.status;
+            const settled = row.status === "SUCCESSED";
+            return (
+              <tr key={row.id}>
+                <td>
+                  <code title={row.id}>{row.id.slice(0, 8)}</code>
+                  <small>
+                    {new Date(row.created_at).toLocaleString("vi-VN", {
+                      timeZone: "Asia/Ho_Chi_Minh",
+                    })}
+                  </small>
+                </td>
+                <td>
                   {
-                    {
-                      PENDING: "Đang xử lý",
-                      SUCCESSED: "Thành công",
-                      FAILED: "Thất bại",
-                    }[row.status]
+                    { IN: "Nạp tiền", OUT: "Chi tiền", BUY: "Mua game" }[
+                      row.type
+                    ]
                   }
-                </span>
-              </td>
-            </tr>
-          ))}
+                  <small>{row.type}</small>
+                </td>
+                <td>
+                  {checkout?.purpose === "TOPUP"
+                    ? "Nạp vào ví GameStore"
+                    : games.find((g) => g.id === row.game_id)?.title || "—"}
+                </td>
+                <td className={row.type === "IN" && settled ? "positive" : ""}>
+                  {settled ? (row.type === "IN" ? "+" : "−") : ""}
+                  {money(row.amount)}
+                </td>
+                <td>
+                  <span className={`transaction-status ${status}`}>
+                    {
+                      {
+                        PENDING: checkout ? "Chờ thanh toán" : "Đang xử lý",
+                        SUCCESSED: "Thành công",
+                        FAILED: "Thất bại",
+                        CANCELLED: "Đã hủy",
+                        EXPIRED: "Hết hạn",
+                      }[status]
+                    }
+                  </span>
+                </td>
+                {checkouts.length > 0 && (
+                  <td>
+                    {checkout && (
+                      <Link
+                        className="commerce-button"
+                        to={`/checkout/${encodeURIComponent(checkout.id)}`}
+                      >
+                        {status === "PENDING"
+                          ? "Tiếp tục thanh toán"
+                          : "Xem biên nhận"}
+                      </Link>
+                    )}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

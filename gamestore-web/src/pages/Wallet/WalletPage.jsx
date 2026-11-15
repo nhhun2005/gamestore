@@ -1,16 +1,26 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useCommerce } from "../../components/commerce/context";
 import TopUpQrDialog from "./TopUpQrDialog";
+import WithdrawDialog from "./WithdrawDialog";
+import { useOperation } from "../../components/commerce/useOperation";
+import PendingCheckouts from "../../components/commerce/PendingCheckouts";
 import {
   PageHeader,
   TransactionTable,
 } from "../../components/commerce/CommerceUI";
 import { cents, money } from "../../services/currency";
 export default function WalletPage() {
-  const { state, user } = useCommerce();
+  const { state, user, service } = useCommerce();
+  const navigate = useNavigate();
+  const operation = useOperation();
+  const requestKey = useRef(crypto.randomUUID());
+  const sandboxTopups =
+    user.source === "jwt" && state.capabilities?.sandbox_topups;
   const [amount, setAmount] = useState("500000");
   const [confirm, setConfirm] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const canWithdraw = ["ADMINISTRATOR", "DEVELOPER"].includes(user.role);
   const [pendingAmount, setPendingAmount] = useState("");
   const topupsEnabled =
     user.source === "demo" || state.capabilities?.demo_topups === true;
@@ -25,21 +35,21 @@ export default function WalletPage() {
   return (
     <main className="steam-main-content commerce-page">
       <PageHeader
-        eyebrow="TÀI KHOẢN / VÍ STEAM STORE"
-        title="Nạp năng lượng cho cuộc chơi."
-      >
-        Quản lý số dư và những hành trình tiếp theo của bạn.
-      </PageHeader>
+        eyebrow="TÀI KHOẢN / VÍ GAME STORE"
+        title="Ví của tôi"
+      />
       <div className="wallet-columns">
         <section className="commerce-panel wallet-balance">
-          <small>SỐ DƯ KHẢ DỤNG{user.source === "demo" ? " · DEMO" : ""}</small>
+          <small>SỐ DƯ KHẢ DỤNG</small>
           <h2>{money(account.balance)}</h2>
           <p>Ví của {user.username}</p>
+          {canWithdraw && <p><button className="commerce-button primary"
+            disabled={!state.capabilities?.sandbox_withdrawals}
+            onClick={() => setWithdrawing(true)}>Rút tiền</button></p>}
           <Link to="/transactions">Xem lịch sử giao dịch →</Link>
         </section>
         <section className="commerce-panel">
           <h2>Nạp tiền vào tài khoản</h2>
-          <p>Chọn mệnh giá hoặc nhập số tiền tùy chỉnh.</p>
           <div className="deposit-options">
             {["100000", "200000", "500000", "1000000"].map((value) => (
               <button
@@ -55,8 +65,17 @@ export default function WalletPage() {
             onSubmit={(e) => {
               e.preventDefault();
               if (valid && topupsEnabled) {
-                setPendingAmount(amount);
-                setConfirm(true);
+                if (sandboxTopups)
+                  operation.run(
+                    () =>
+                      service.createTopUpCheckout(amount, requestKey.current),
+                    (payment) =>
+                      navigate(`/checkout/${encodeURIComponent(payment.id)}`),
+                  );
+                else {
+                  setPendingAmount(amount);
+                  setConfirm(true);
+                }
               }
             }}
           >
@@ -74,26 +93,29 @@ export default function WalletPage() {
               id="deposit-help"
               className={valid ? "commerce-note" : "commerce-error"}
             >
-              {valid
-                ? "Nhập số, có thể dùng dấu chấm cho phần thập phân (tối đa 2 chữ số)."
-                : "Nhập số tiền lớn hơn 0, tối đa 100.000.000 ₫, tối đa 2 chữ số thập phân."}
+              {!valid && "Nhập số tiền lớn hơn 0, tối đa 100.000.000 ₫, tối đa 2 chữ số thập phân."}
             </p>
             <button
               className="commerce-button primary"
-              disabled={!valid || !topupsEnabled}
+              disabled={!valid || !topupsEnabled || operation.busy}
             >
-              Tiếp tục nạp tiền
+              {operation.busy ? "Đang tạo đơn nạp tiền…" : "Tiếp tục nạp tiền"}
             </button>
           </form>
-          <p className="commerce-note">
-            {user.source === "demo"
-              ? "DEMO · Chỉ cập nhật dữ liệu mô phỏng, không kết nối ngân hàng hoặc thu tiền thật."
-              : topupsEnabled
-                ? "Nạp tiền bằng QR mô phỏng: xác nhận mã để cộng số dư, không chuyển tiền ngân hàng thật."
-                : "Nạp tiền mô phỏng đang tắt trên máy chủ."}
-          </p>
+          {operation.error && (
+            <p role="alert" className="commerce-error">
+              {operation.error}
+            </p>
+          )}
+          {!topupsEnabled && (
+            <p className="commerce-note">
+              Nạp tiền đang tạm ngừng trên máy chủ.
+            </p>
+          )}
         </section>
       </div>
+      <PendingCheckouts purpose="TOPUP" />
+      {canWithdraw && <PendingCheckouts purpose="WITHDRAWAL" />}
       <div className="commerce-section-title">
         <h2>Lần nạp gần đây</h2>
         <Link to="/transactions">Tất cả giao dịch →</Link>
@@ -103,8 +125,12 @@ export default function WalletPage() {
           .filter((t) => t.user_id === user.id && t.type === "IN")
           .slice(0, 5)}
         games={state.games}
+        checkouts={state.checkout_sessions}
       />
-      {confirm && <TopUpQrDialog amount={pendingAmount} close={() => setConfirm(false)} />}
+      {confirm && (
+        <TopUpQrDialog amount={pendingAmount} close={() => setConfirm(false)} />
+      )}
+      {withdrawing && <WithdrawDialog balance={account.balance} close={() => setWithdrawing(false)} />}
     </main>
   );
 }

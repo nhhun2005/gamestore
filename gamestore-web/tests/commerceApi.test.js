@@ -2,6 +2,27 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHttpCommerceService } from "../src/services/commerceApi.js";
 const user = { id: "actual-user", source: "jwt" };
+test('library HTTP actions authenticate, refresh state and keep user IDs out of request bodies', async () => {
+  const calls = [];
+  const api = createHttpCommerceService({ identity: () => user, token: () => 'actual-token', baseUrl: '/api/commerce',
+    fetchImpl: async (url, options) => {
+      calls.push({ url, ...options });
+      return url.endsWith('/state') ? new Response(JSON.stringify(state()), { status: 200 }) : new Response(null, { status: 204 });
+    },
+  });
+  await api.createCollection('Indie');
+  await api.renameCollection('collection-id', 'Weekend');
+  await api.collectionGame('collection-id', 'game-id', true);
+  await api.collectionGame('collection-id', 'game-id', false);
+  await api.saveLibraryPreference('game-id', 'Personal note', true);
+  await api.deleteCollection('collection-id');
+  const mutations = calls.filter((c) => c.method !== 'GET');
+  assert.deepEqual(mutations.map((c) => c.method), ['POST','PUT','PUT','DELETE','PUT','DELETE']);
+  assert.equal(calls.filter((c) => c.url.endsWith('/state')).length, 6);
+  assert.ok(mutations.every((c) => c.headers.Authorization === 'Bearer actual-token'));
+  assert.deepEqual(JSON.parse(mutations[4].body), { note: 'Personal note', hidden: true });
+  assert.ok(mutations.every((c) => !c.body?.includes('user_id')));
+});
 function state(balance = "500000.00") {
   return {
     current_user: { id: user.id, username: "Player", role: "USER", balance },

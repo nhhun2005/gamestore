@@ -1,0 +1,570 @@
+/* Adapted payment-summary/card-form/result layout from Fake-bank (Apache-2.0).
+   Restyled and scoped for GameStore Pay. See /third_party/fake-bank/NOTICE. */
+.gs-pay {
+  width: min(1060px, calc(100% - 32px));
+  margin: 30px auto 64px;
+  color: #24334a;
+  font-family: inherit;
+}
+.gs-pay button,
+.gs-pay input {
+  font: inherit;
+}
+.gs-pay button {
+  cursor: pointer;
+}
+.gs-pay button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.gs-pay button:focus-visible,
+.gs-pay input:focus-visible,
+.gs-pay a:focus-visible {
+  outline: 3px solid #48a4ee;
+  outline-offset: 3px;
+}
+.gs-pay-header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 0 0 24px;
+  border-bottom: 1px solid #41536b;
+}
+.gs-pay .gs-pay-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 23px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+}
+.gs-pay-brand > span {
+  background: linear-gradient(130deg, #079ce2, #2860c9);
+  border-radius: 10px;
+  padding: 5px 12px;
+  margin-right: 5px;
+}
+.gs-pay-brand b {
+  font-weight: 400;
+  color: #88c6fa;
+}
+.gs-pay-sandbox {
+  color: #adc7e6;
+  background: #32445b;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  font-size: 10px;
+}
+.gs-pay-secure {
+  margin-left: auto;
+  color: #a8b7cb;
+  font-size: 12px;
+}
+.gs-pay-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 28px 0;
+  color: #637b93;
+  font-size: 13px;
+}
+.gs-pay-steps span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.gs-pay-steps b {
+  font-weight: 500;
+}
+.gs-pay-steps .active {
+  color: #d9edff;
+}
+.gs-pay-steps .complete {
+  color: #72b8ed;
+}
+.gs-pay-steps i {
+  height: 1px;
+  background: #3a516a;
+  width: 70px;
+}
+.gs-pay-layout {
+  display: grid;
+  grid-template-columns: 350px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.gs-pay-order,
+.gs-pay-panel {
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #fff;
+  padding: 30px;
+  box-shadow: 0 18px 48px #0002;
+  min-width: 0;
+}
+.gs-pay-order {
+  background: #f2f6fb;
+}
+.gs-pay h1 {
+  font-size: 23px;
+  line-height: 1.35;
+  color: #1c2f4b;
+  margin: 0 0 8px;
+  font-weight: 650;
+}
+.gs-pay-order > small {
+  color: #78869a;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+}
+.gs-pay-order > h2 {
+  font-size: 22px;
+  margin: 6px 0 26px;
+  color: #193f71;
+}
+.gs-pay-product {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #dce4ee;
+  margin-bottom: 22px;
+}
+.gs-pay-product > span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  background: #dfeafa;
+  color: #2d66b2;
+  font-size: 28px;
+  border-radius: 7px;
+}
+.gs-pay-product h3 {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+  color: #243c5d;
+}
+.gs-pay-product small {
+  color: #738299;
+  font-size: 11px;
+}
+.gs-pay .payment-summary,
+.gs-pay .result-summary {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 24px;
+}
+.gs-pay .payment-summary > div,
+.gs-pay .result-summary > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid #e2e7ef;
+  padding-bottom: 12px;
+}
+.gs-pay dt {
+  color: #637083;
+  font-size: 12px;
+}
+.gs-pay dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+}
+.gs-pay .gs-pay-total {
+  border: 0;
+  padding-top: 8px;
+}
+.gs-pay-total dd {
+  color: #1469b9;
+  font-size: 24px;
+}
+.gs-pay-countdown {
+  text-align: center;
+  background: #e4eefb;
+  color: #3a6594;
+  padding: 13px 8px;
+  border: 1px solid #d0e2f8;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.gs-pay-countdown strong {
+  display: block;
+  font-size: 23px;
+  color: #1766ac;
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.gs-pay-countdown.ending strong {
+  color: #af4242;
+}
+.gs-pay-order-note {
+  color: #79879a;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 18px 0;
+}
+.gs-pay-cancel {
+  border: 1px solid #c4d1df;
+  border-radius: 6px;
+  padding: 10px;
+  color: #64768e;
+  background: transparent;
+  width: 100%;
+  font-size: 12px !important;
+}
+.gs-pay .gs-pay-return {
+  display: block;
+  font-size: 12px;
+  text-align: center;
+  margin: 18px 0 0;
+  color: #3772ad;
+  text-decoration: none;
+}
+.gs-pay-subtitle {
+  color: #8390a2;
+  font-size: 13px;
+  margin: 0 0 24px;
+}
+.gs-pay-methods {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.gs-pay-methods button {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 14px 8px;
+  border: 1px solid #d4dfe9;
+  background: #fff;
+  color: #67768b;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.gs-pay-methods button.selected {
+  background: #f0f7ff;
+  border-color: #2c81cd;
+  color: #1765ac;
+  box-shadow: inset 0 0 0 1px #2c81cd;
+}
+.gs-pay-methods button > span {
+  font-size: 20px;
+}
+.gs-pay-banks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  margin: 0 0 22px;
+}
+.gs-pay-banks legend {
+  margin-bottom: 12px;
+  color: #617185;
+  font-size: 12px;
+}
+.gs-pay-banks label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #e0e6ee;
+  border-radius: 5px;
+  padding: 10px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #4d627b;
+}
+.gs-pay-banks label.selected {
+  border-color: #84b4de;
+  background: #f6faff;
+}
+.gs-pay-banks .gs-pay-bank-logo {
+  width: 112px;
+  height: 38px;
+  object-fit: contain;
+  min-width: 0;
+}
+.gs-pay-bank-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.gs-pay-banks input {
+  accent-color: #217cc6;
+  width: 12px;
+}
+.gs-pay .card-form {
+  display: grid;
+  gap: 18px;
+}
+.gs-pay .card-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: #52677f;
+}
+.gs-pay .card-form input,
+.gs-pay-qr input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ced8e4;
+  background: #fff;
+  border-radius: 6px;
+  padding: 13px 12px;
+  color: #24415e;
+  min-width: 0;
+}
+.gs-pay .card-form input::placeholder,
+.gs-pay-qr input::placeholder {
+  color: #a4afbe;
+}
+.gs-pay .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.gs-pay-test-cards {
+  padding: 12px;
+  background: #f5f8fc;
+  border: 1px dashed #cedbea;
+  border-radius: 5px;
+}
+.gs-pay-test-cards > small {
+  color: #6a7d95;
+  font-size: 10px;
+  letter-spacing: 0.7px;
+}
+.gs-pay-test-cards > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0;
+}
+.gs-pay-test-cards button {
+  background: #fff;
+  border: 1px solid #d4e0eb;
+  color: #3673aa;
+  border-radius: 4px;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+.gs-pay-test-cards p {
+  font-size: 11px;
+  color: #93a1b2;
+  margin: 0;
+}
+.gs-pay .gs-pay-submit {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 15px 12px;
+  background: linear-gradient(110deg, #157dc8, #1559b0);
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  font-size: 14px;
+  text-decoration: none;
+}
+.gs-pay-error {
+  padding: 12px 14px;
+  color: #a0323e;
+  background: #fff1f1;
+  border: 1px solid #f1ccd0;
+  border-radius: 5px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.gs-pay-operation-error {
+  margin-bottom: 18px;
+}
+.gs-pay-provider-note {
+  text-align: center;
+  font-size: 11px;
+  color: #9ba8b9;
+  padding-top: 22px;
+}
+.gs-pay-qr {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+.gs-pay-qr img {
+  width: min(248px, 100%);
+  margin: 0 auto;
+  border: 1px solid #e1e7ef;
+  border-radius: 8px;
+}
+.gs-pay-qr p,
+.gs-pay-qr label {
+  color: #74859b;
+  font-size: 12px;
+  margin: 0;
+}
+.gs-pay-qr label {
+  text-align: left;
+  margin-top: 8px;
+}
+.gs-pay-loading {
+  color: #c5d8e8;
+  text-align: center;
+  padding: 40px;
+}
+.gs-pay-result-panel {
+  max-width: 570px;
+  margin: 0 auto;
+}
+.gs-pay-result {
+  text-align: center;
+}
+.gs-pay-result-icon {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  margin: 10px auto 24px;
+  border-radius: 50%;
+  color: #2a8a6b;
+  background: #e5f5ef;
+  font-size: 36px;
+}
+.result-failed .gs-pay-result-icon,
+.result-expired .gs-pay-result-icon {
+  background: #fff0e4;
+  color: #b66a30;
+}
+.result-cancelled .gs-pay-result-icon {
+  background: #edf1f6;
+  color: #8191a5;
+}
+.gs-pay-result > p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #8190a4;
+  margin-bottom: 28px;
+}
+.gs-pay-result .result-summary {
+  text-align: left;
+  margin-bottom: 28px;
+}
+.gs-pay-result .result-summary dd {
+  max-width: 68%;
+}
+.checkout-payment-option {
+  border: 1px solid #45627c;
+  border-radius: 4px;
+  padding: 16px;
+  margin: 18px 0;
+  background: #152c40;
+}
+.checkout-payment-option strong {
+  color: #cce8fa;
+}
+.checkout-payment-option small {
+  display: block;
+  color: #89a7c0;
+  font-size: 12px;
+  margin: 6px 0 14px;
+}
+.checkout-wallet-option {
+  border-color: #496738;
+  background: #1b302a;
+}
+.checkout-wallet-option strong {
+  color: #d7eab8;
+}
+.checkout-wallet-option small {
+  color: #a3b995;
+}
+.commerce-dialog .commerce-button.checkout-wallet-button {
+  background: linear-gradient(110deg, #39751d, #4a7c21);
+  border-color: #61923d;
+  color: #fff;
+}
+.commerce-dialog .commerce-button.checkout-gateway-button {
+  background: linear-gradient(110deg, #176baf, #1952a2);
+  border-color: #3a89cb;
+  color: #fff;
+}
+.commerce-dialog .commerce-button.checkout-wallet-button[aria-busy="true"],
+.commerce-dialog .commerce-button.checkout-gateway-button[aria-busy="true"] { opacity: 1; cursor: wait; }
+.commerce-dialog .commerce-button.checkout-wallet-button:hover:not(:disabled),
+.commerce-dialog .commerce-button.checkout-gateway-button:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+.checkout-wallet-option .commerce-actions {
+  flex-wrap: wrap;
+}
+.checkout-pending-orders p {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .gs-pay-layout {
+    grid-template-columns: 1fr;
+  }
+  .gs-pay {
+    margin-top: 18px;
+  }
+  .gs-pay-secure {
+    display: none;
+  }
+  .gs-pay-order,
+  .gs-pay-panel {
+    padding: 22px;
+  }
+  .gs-pay-steps {
+    gap: 8px;
+  }
+  .gs-pay-steps i {
+    width: 28px;
+  }
+  .gs-pay-steps span {
+    font-size: 11px;
+  }
+  .gs-pay-header {
+    gap: 10px;
+  }
+  .gs-pay .gs-pay-brand {
+    font-size: 20px;
+  }
+  .gs-pay-order > h2 {
+    margin-bottom: 14px;
+  }
+  .gs-pay-product {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gs-pay-submit {
+    transition: filter 0.15s;
+  }
+  .gs-pay-submit:hover {
+    filter: brightness(1.1);
+  }
+}
+@media (max-width: 440px) {
+  .gs-pay-banks {
+    grid-template-columns: 1fr;
+  }
+}

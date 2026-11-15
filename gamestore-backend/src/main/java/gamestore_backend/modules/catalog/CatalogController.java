@@ -22,7 +22,8 @@ public class CatalogController {
     @DeleteMapping("/games/{id}/permanent") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void permanent(Authentication auth, @PathVariable UUID id) { service.permanent(auth.getName(), id); }
     @PostMapping("/games/{id}/submissions") @ResponseStatus(HttpStatus.CREATED)
-    public Submission submit(Authentication auth, @PathVariable UUID id) { return service.submit(auth.getName(), id); }
+    public Submission submit(Authentication auth, @PathVariable UUID id, @RequestBody(required=false) SubmissionInput input) { return service.submit(auth.getName(), id, input); }
+    @GetMapping("/games/{id}/publication-quote") public PublicationQuote publicationQuote(Authentication auth,@PathVariable UUID id) { return service.publicationQuote(auth.getName(),id); }
     @GetMapping("/submissions") public SubmissionPage submissions(Authentication auth,
         @RequestParam(required = false) String status, @RequestParam(defaultValue = "") String q,
         @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) { return service.submissions(auth.getName(), status, q, page, size); }

@@ -132,7 +132,7 @@ function RegisterPage({ onNavigate }) {
         <form onSubmit={handleSubmit}>
           <div className="steam-form-group">
             <label className="steam-form-label highlight">
-              Tên tài khoản Steam
+              Tên tài khoản Game Store
             </label>
             <input
               type="text"

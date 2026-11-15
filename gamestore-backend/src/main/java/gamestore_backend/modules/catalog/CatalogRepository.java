@@ -11,6 +11,12 @@ import org.springframework.stereotype.Repository;
 public class CatalogRepository {
     private final JdbcTemplate jdbc;
     public CatalogRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    public PublicationQuote publicationQuote(Game game, Actor actor) {
+        boolean paid=Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM public.game_publication_fees WHERE game_id=?)",Boolean.class,game.id()));
+        boolean required=new java.math.BigDecimal(game.price()).signum()==0 && !paid;
+        String balance=jdbc.queryForObject("SELECT balance FROM public.users WHERE id=?",java.math.BigDecimal.class,actor.id()).setScale(2).toPlainString();
+        return new PublicationQuote(game.id(),required,required?"1300000.00":"0.00",required?"50.00":"0.00",balance,paid);
+    }
     private static final String SUBMISSIONS = """
         SELECT s.id,s.game_id,s.game_title,s.submitted_by,s.submitter_name,s.reviewed_by,
                s.reviewer_name,s.status,s.reason,s.created_at,s.reviewed_at

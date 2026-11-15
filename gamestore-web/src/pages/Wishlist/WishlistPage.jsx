@@ -23,27 +23,16 @@ export default function WishlistPage() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
 
-  if (user.source !== "jwt")
-    return (
-      <main className="steam-main-content commerce-page">
-        <PageHeader eyebrow="DANH SÁCH MUỐN MUA" title="Yêu thích" />
-        <section className="commerce-panel">
-          <p role="status">
-            Danh sách yêu thích cần tài khoản thật. Chế độ Demo chưa hỗ trợ.
-          </p>
-        </section>
-      </main>
-    );
-
   const owned = new Set(
     state.game_bought
       .filter((p) => p.user_id === user.id)
       .map((p) => p.game_id),
   );
   const rows = (state.wishlist ?? [])
+    .filter((entry) => !entry.user_id || entry.user_id === user.id)
     .map((entry) => {
       const game = state.games.find((g) => g.id === entry.game_id);
-      if (!game || game.status !== "AVAILABLE" || owned.has(game.id))
+      if (!game || (game.status !== "AVAILABLE" && !owned.has(game.id)))
         return null;
       const price = priceOf(game, state.promotions);
       return {
@@ -79,7 +68,7 @@ export default function WishlistPage() {
 
   return (
     <main className="steam-main-content commerce-page">
-      <PageHeader eyebrow="DANH SÁCH MUỐN MUA" title="Yêu thích">
+      <PageHeader eyebrow="TRÒ CHƠI BẠN YÊU THÍCH" title="Yêu thích">
         {rows.length
           ? `${rows.length} trò chơi${saleCount ? ` · ${saleCount} đang giảm giá` : ""}. Bạn sẽ nhận thông báo khi game ở đây được giảm giá.`
           : "Lưu những game bạn quan tâm và nhận thông báo khi chúng giảm giá."}
@@ -135,7 +124,7 @@ export default function WishlistPage() {
                     className="commerce-button primary"
                     to={`/games/${encodeURIComponent(game.id)}`}
                   >
-                    {onSale ? "Mua ngay" : "Xem chi tiết"}
+                    {owned.has(game.id) ? 'Đã sở hữu · Xem chi tiết' : onSale ? "Mua ngay" : "Xem chi tiết"}
                   </Link>
                   <button
                     className="commerce-button"

@@ -53,7 +53,7 @@ class HuanDatabaseProgrammabilityTests {
     }
 
     @Test void migrationContainsTrueProceduresViewsTriggersAndFiveIndexes() {
-        assertEquals(13,jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='p' AND p.proname LIKE 'sp_%'",Integer.class));
+        assertEquals(13,jdbc.queryForObject("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='p' AND p.proname IN ('sp_create_genre','sp_update_genre','sp_delete_genre','sp_attach_game_genre','sp_detach_game_genre','sp_create_game','sp_update_game','sp_set_game_status','sp_delete_game_permanently','sp_submit_game','sp_review_game_submission','sp_submit_developer_application','sp_review_developer_application')",Integer.class));
         assertEquals(10,jdbc.queryForObject("SELECT count(*) FROM pg_views WHERE schemaname='public' AND viewname IN ('v_actor_accounts','v_catalog_developers','v_genre_summary','v_game_genres','v_catalog_games','v_game_submission_details','v_developer_submission_details','v_store_games','v_game_ownership','v_public_game_reviews')",Integer.class));
         assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM pg_trigger WHERE tgname IN ('games_invalidate_approval','game_genres_invalidate_approval') AND NOT tgisinternal",Integer.class));
         assertEquals(5,jdbc.queryForObject("SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN ('genres_name_lookup_idx','game_submissions_game_status_idx','developer_submissions_user_status_idx','developer_submissions_status_id_idx','games_store_title_idx')",Integer.class));

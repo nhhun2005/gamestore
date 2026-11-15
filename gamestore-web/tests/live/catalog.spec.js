@@ -13,7 +13,7 @@ test("real catalog API: developer draft, admin review, store publication and rea
       .fill(account.username);
     await page.getByPlaceholder("••••••••").fill(account.password);
     await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-    await expect(page).toHaveURL(/store/);
+    await expect(page).toHaveURL(account.id === fixture.admin.id ? /admin\/revenue/ : /store/);
     await page.goto(path);
   }
   const response = await request.post(`${fixture.api}/auth/login`, {

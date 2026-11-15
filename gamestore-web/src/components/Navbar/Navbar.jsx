@@ -3,10 +3,13 @@ import NotificationBell from "../Notifications/NotificationBell";
 import "./Navbar.css";
 
 function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
-  const pages = [
+  const consumerPages = [
     ["store", "Cửa hàng (Store)"],
     ["library", "Thư viện (Library)"],
     ["wishlist", "Yêu thích"],
+  ];
+  const pages = [
+    ...(user?.role === "ADMINISTRATOR" ? [] : consumerPages),
     ["wallet", "Ví"],
     ["transactions", "Giao dịch"],
   ];
@@ -28,11 +31,11 @@ function Navbar({ user, activePage, onNavigate, onLogout, balance }) {
     <header className="steam-navbar">
       <div className="steam-navbar-container">
         <div className="steam-brand-and-links">
-          <button className="steam-logo" onClick={() => onNavigate("store")}>
+          <button className="steam-logo" onClick={() => onNavigate(user?.role === "ADMINISTRATOR" ? "admin/revenue" : "store")}>
             <span className="steam-logo-badge" aria-hidden="true">
               🎮
             </span>
-            <span>STEAM STORE</span>
+            <span>GAME STORE</span>
           </button>
           <nav aria-label="Điều hướng chính" className="steam-nav-links">
             {pages.map(([page, label]) => (

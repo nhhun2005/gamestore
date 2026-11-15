@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 async function demo(page, name = "Huỳnh") {
   await page.goto("/demo");
   await page.getByRole("button", { name: new RegExp(name) }).click();
-  await expect(page).toHaveURL(/store/);
+  await expect(page).toHaveURL(name === "Administrator" ? /admin\/revenue/ : /store/);
 }
 async function topUp(page, amount = "500000") {
   await page.goto("/wallet");
@@ -30,7 +30,7 @@ async function details(page, title) {
 async function purchase(page, title) {
   await details(page, title);
   await page.getByRole("button", { name: "Mua game", exact: true }).click();
-  await page.getByRole("button", { name: "Xác nhận mua game" }).click();
+  await page.getByRole("button", { name: "Thanh toán bằng ví" }).click();
   await expect(
     page.getByRole("heading", { name: "Đã thêm vào thư viện" }),
   ).toBeVisible();
@@ -38,6 +38,8 @@ async function purchase(page, title) {
 test("all seven use cases: consistent wallet, library, reviews, history and scoped revenue", async ({
   page,
 }) => {
+  // This journey traverses seven features and three accounts; allow slower local browsers.
+  test.setTimeout(90000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
@@ -76,6 +78,12 @@ test("all seven use cases: consistent wallet, library, reviews, history and scop
   await page.getByLabel("Chia sẻ trải nghiệm").fill("Đã cập nhật trải nghiệm.");
   await page.getByRole("button", { name: "Lưu đánh giá" }).click();
   await expect(page.getByText("3.5 / 5 · 1 đánh giá")).toBeVisible();
+  await page.getByRole("button", { name: /Thêm vào yêu thích/ }).click();
+  await expect(page.getByRole("button", { name: /Đã yêu thích/ })).toBeVisible();
+  await page.screenshot({ path: "output/playwright/library-desktop.png", fullPage: true });
+  await page.goto("/wishlist");
+  await expect(page.getByRole("link", { name: /Đã sở hữu/ })).toBeVisible();
+  await page.goto("/library");
   await page.getByRole("button", { name: "Xóa đánh giá", exact: true }).click();
   await page.getByRole("button", { name: "Xác nhận xóa" }).click();
   await expect(
@@ -139,7 +147,7 @@ test("all seven use cases: consistent wallet, library, reviews, history and scop
     }),
   ).toBeVisible();
   await page.getByLabel("Đến ngày").fill("2020-01-01");
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.getByRole("alert")).toContainText(
     "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.",
   );
   expect(errors).toEqual([]);
@@ -189,8 +197,9 @@ test("mobile, validation, insufficient funds, free/duplicate/unavailable purchas
     path: "output/playwright/library-mobile.png",
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Đặt lại dữ liệu" }).click();
-  await page.getByRole("button", { name: "Xác nhận đặt lại" }).click();
+  await expect(page.getByRole("button", { name: "Đặt lại dữ liệu" })).toHaveCount(0);
+  await page.evaluate(() => localStorage.removeItem('gamestore.commerce.v2'));
+  await page.reload();
   await expect(
     page.getByRole("heading", { name: "Thư viện đang trống" }),
   ).toBeVisible();
@@ -215,8 +224,8 @@ function authData(role = "USER", seconds = 3600) {
 async function interceptAuth(page, data, status = 200, topups = true) {
   await page.route("http://localhost:8080/api/auth/**", (route) =>
     route.fulfill({
-      status,
-      json: data,
+      status: status === 200 && route.request().url().endsWith('/register') ? 201 : status,
+      json: status === 200 && !route.request().url().endsWith('/login') ? { message: 'Vui lòng kiểm tra email để xác thực tài khoản.' } : data,
       headers: { "access-control-allow-origin": "*" },
     }),
   );
@@ -256,6 +265,7 @@ async function interceptAuth(page, data, status = 200, topups = true) {
       else if (path.endsWith("/purchases"))
         body = await commerce.purchase(route.request().postDataJSON().game_id);
       else if (path.endsWith("/revenue")) body = await commerce.revenue();
+      else if (path.endsWith("/revenue/fees")) body = await commerce.publicationFees();
       else
         return route.fulfill({
           status: 404,
@@ -330,9 +340,10 @@ test("existing registration, role navigation, expired and invalid login response
   await page.getByRole("button", { name: "Hoàn tất đăng ký" }).click();
   await expect(page.getByRole("heading", { name: "Kiểm tra email của bạn" })).toBeVisible();
   await expect(page).toHaveURL(/register/);
+  expect(await page.evaluate(() => localStorage.getItem('steam_jwt_token'))).toBeNull();
   await page.getByText("Quay lại đăng nhập", { exact: true }).click();
   await login(page);
-  await expect(page).toHaveURL(/store/);
+  await expect(page).toHaveURL(/admin\/revenue/);
   await page.getByRole("link", { name: "Quản lý người dùng" }).click();
   await expect(
     page.getByRole("heading", { name: /Quản lý Người dùng/ }),

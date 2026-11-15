@@ -1,0 +1,136 @@
+.steam-reviews {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+.steam-review {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  background: #16202d;
+  border-top: 1px solid #446079;
+  box-shadow: 0 2px 6px #0003;
+  color: #acb2b8;
+}
+.steam-review-author {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 18px 14px;
+  background: #0002;
+  min-width: 0;
+}
+.steam-review-author strong {
+  color: #c1d6e6;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.steam-review small {
+  display: block;
+  font-size: 11px;
+  color: #8493a3;
+  margin-top: 5px;
+}
+.steam-review-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #31566c, #152d43);
+  border: 1px solid #5780a0;
+  color: #c0dced;
+}
+.steam-review-main {
+  min-width: 0;
+  padding: 10px 16px 18px;
+}
+.steam-review-main header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #101821;
+  padding: 8px;
+}
+.steam-review-main header strong {
+  color: #d2e7f6;
+  font-size: 15px;
+}
+.steam-review-star {
+  color: #66c0f4;
+  font-size: 26px;
+}
+.steam-review-main p {
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 16px 0 0;
+}
+.steam-review-empty {
+  padding: 24px;
+  background: #0002;
+  color: #94a3b2;
+}
+.commerce-dialog.steam-review-dialog {
+  width: min(780px, calc(100vw - 32px));
+  background: #1b2838;
+}
+.steam-review-composer {
+  padding: 18px;
+  background: #17212e;
+  border-top: 1px solid #40536a;
+}
+.steam-review-game {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.steam-review-game .game-art {
+  width: 150px;
+  height: 72px;
+  flex: 0 0 150px;
+}
+.steam-review-game h3 {
+  color: #e6e7e9;
+  margin: 0 0 6px;
+}
+.steam-review-game p {
+  margin: 0;
+  color: #8f98a0;
+  font-size: 13px;
+}
+.steam-review-composer label {
+  display: block;
+  margin: 16px 0 8px;
+  color: #b9d6ea;
+}
+.steam-review-composer textarea.commerce-input {
+  min-height: 180px;
+  background: #101922;
+  border: 1px solid #425366;
+  resize: vertical;
+}
+.steam-review-composer select {
+  max-width: 180px;
+}
+.steam-review-composer footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (max-width: 600px) {
+  .steam-review {
+    grid-template-columns: 1fr;
+  }
+  .steam-review-author {
+    padding: 12px;
+  }
+  .steam-review-game {
+    flex-wrap: wrap;
+  }
+  .steam-review-composer {
+    padding: 12px;
+  }
+}

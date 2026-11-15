@@ -36,6 +36,58 @@ async function fund(service, amount) {
   const qr = await service.createTopUpChallenge(amount);
   return service.topUp(amount, qr.challenge_id, { challenge_id: qr.challenge_id, code: qr.code });
 }
+
+test('personal library persists without changing purchases or reviews', async () => {
+  const { service: s, options } = fixture();
+  await s.purchase(gameId(5));
+  await s.saveReview(gameId(5), 4, 'Keep review');
+  const purchases = structuredClone(s.snapshot().game_bought);
+  const history = structuredClone(s.snapshot().transactions);
+  const first = await s.createCollection('  Indie  ');
+  const other = await s.createCollection('Other');
+  await assert.rejects(s.createCollection('indie'), /tồn tại/);
+  await assert.rejects(s.renameCollection(other.id, 'INDIE'), /tồn tại/);
+  await assert.rejects(s.createCollection(' '));
+  await assert.rejects(s.createCollection('x'.repeat(81)));
+  await s.renameCollection(first.id, 'Cuối tuần');
+  await s.collectionGame(first.id, gameId(5), true);
+  await s.collectionGame(first.id, gameId(5), true);
+  assert.equal(s.snapshot().library.memberships.length, 1);
+  await assert.rejects(s.collectionGame(first.id, gameId(1), true), /sở hữu/);
+  await assert.rejects(s.saveLibraryPreference(gameId(1), 'No ownership', true), /sở hữu/);
+  await assert.rejects(s.saveLibraryPreference(gameId(5), 'x'.repeat(2001), false));
+  await s.saveLibraryPreference(gameId(5), 'Riêng tư', true);
+  const restored = createCommerceService(options);
+  assert.equal(restored.snapshot().library.preferences[0].note, 'Riêng tư');
+  assert.equal(restored.snapshot().library.preferences[0].hidden, true);
+  await s.collectionGame(first.id, gameId(5), false);
+  await s.collectionGame(first.id, gameId(5), true);
+  await s.deleteCollection(first.id);
+  assert.equal(s.snapshot().library.memberships.length, 0);
+  assert.deepEqual(s.snapshot().game_bought, purchases);
+  assert.deepEqual(s.snapshot().transactions, history);
+  assert.equal(s.snapshot().reviews.length, 1);
+  await s.saveLibraryPreference(gameId(5), '', false);
+  assert.equal(s.snapshot().library.preferences[0].hidden, false);
+});
+
+test('library writes are scoped to account for all three roles', async () => {
+  const { service: s, select } = fixture();
+  await s.purchase(gameId(5));
+  const own = await s.createCollection('Private');
+  await s.saveLibraryPreference(gameId(5), 'Secret', true);
+  for (const other of demoUsers.slice(1)) {
+    select(other);
+    await assert.rejects(s.renameCollection(own.id, 'Stolen'), /của bạn/);
+    await assert.rejects(s.deleteCollection(own.id), /của bạn/);
+    await assert.rejects(s.collectionGame(own.id, gameId(5), true), /của bạn/);
+    await assert.rejects(s.saveLibraryPreference(gameId(5), 'Stolen', false), /sở hữu/);
+    await s.purchase(gameId(5));
+    await s.createCollection('Private');
+    await s.saveLibraryPreference(gameId(5), 'Own note', false);
+  }
+  assert.equal(s.snapshot().library.preferences.find((p) => p.user_id === demoUsers[0].id).note, 'Secret');
+});
 test("one consistent deposit, purchase, review, revenue and persistence journey", async () => {
   const { service: s, storage, select, options } = fixture();
   await fund(s, "500000");

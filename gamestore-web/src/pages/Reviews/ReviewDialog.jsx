@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Modal } from "../../components/commerce/CommerceUI";
+import { Artwork, Modal } from "../../components/commerce/CommerceUI";
+import "./Reviews.css";
 import { useCommerce } from "../../components/commerce/context";
 import { useOperation } from "../../components/commerce/useOperation";
 export default function ReviewDialog({
@@ -18,6 +19,7 @@ export default function ReviewDialog({
   };
   return (
     <Modal
+      className="steam-review-dialog"
       title={deleting ? "Xóa đánh giá?" : `Đánh giá ${game.title}`}
       close={close}
       {...operation}
@@ -37,6 +39,7 @@ export default function ReviewDialog({
         </>
       ) : (
         <form
+          className="steam-review-composer"
           onSubmit={(e) => {
             e.preventDefault();
             operation.run(
@@ -45,6 +48,16 @@ export default function ReviewDialog({
             );
           }}
         >
+          <div className="steam-review-game">
+            <Artwork game={game} />
+            <div>
+              <h3>Bạn nghĩ gì về trò chơi này?</h3>
+              <p>
+                Chia sẻ điều bạn thích và điều cần cải thiện để giúp người chơi
+                khác.
+              </p>
+            </div>
+          </div>
           <label htmlFor="review-rating">Điểm đánh giá</label>
           <select
             id="review-rating"
@@ -62,19 +75,22 @@ export default function ReviewDialog({
           <textarea
             id="review-content"
             className="commerce-input"
-            rows={5}
+            rows={7}
+            placeholder="Viết cảm nhận của bạn về trò chơi…"
             maxLength={2000}
             required
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
-          <small>{content.length} / 2.000 ký tự</small>
-          <button
-            className="commerce-button primary"
-            disabled={operation.busy || !content.trim()}
-          >
-            {operation.busy ? "Đang lưu…" : "Lưu đánh giá"}
-          </button>
+          <footer>
+            <small>{content.length} / 2.000 ký tự</small>
+            <button
+              className="commerce-button primary"
+              disabled={operation.busy || !content.trim()}
+            >
+              {operation.busy ? "Đang lưu…" : "Lưu đánh giá"}
+            </button>
+          </footer>
         </form>
       )}
     </Modal>

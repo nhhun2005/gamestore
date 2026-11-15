@@ -7,7 +7,9 @@ export const EMPTY_COMMERCE_STATE = {
   game_bought: [],
   reviews: [],
   wishlist: [],
-  capabilities: { demo_topups: false },
+  library: { collections: [], memberships: [], preferences: [] },
+  checkout_sessions: [],
+  capabilities: { demo_topups: false, sandbox_payments: false, sandbox_topups: false },
 };
 const API_BASE =
   import.meta.env?.VITE_API_BASE_URL || "http://localhost:8080/api";
@@ -74,6 +76,7 @@ export function createHttpCommerceService({
         ...data.users.filter((u) => u.id !== data.current_user.id),
       ],
       wishlist: data.wishlist || [],
+      library: data.library || { collections: [], memberships: [], preferences: [] },
     };
     cacheOwner = user.id;
     if (identity === session.snapshot) session.updateProfile(data.current_user);
@@ -98,6 +101,9 @@ export function createHttpCommerceService({
       return () => listeners.delete(fn);
     },
     prepareAccount,
+    withdraw(amount, key) {
+      return mutation("/wallet/withdrawals", { method: "POST", body: { amount }, key });
+    },
     createTopUpChallenge(amount) {
       return request("/wallet/demo-topups/challenges", { method: "POST", body: { amount } });
     },
@@ -115,6 +121,13 @@ export function createHttpCommerceService({
         key,
       });
     },
+    createCheckout(game_id, key, expected_amount) {
+      return mutation("/checkouts", { method: "POST", body: { game_id, expected_amount }, key });
+    },
+    createTopUpCheckout(amount, key) { return mutation("/wallet/checkouts", { method: "POST", body: { amount }, key }); },
+    checkout(id) { return mutation(`/checkouts/${encodeURIComponent(id)}`, { method: "GET" }); },
+    confirmCheckout(id, body) { return mutation(`/checkouts/${encodeURIComponent(id)}/confirm`, { method: "POST", body }); },
+    cancelCheckout(id) { return mutation(`/checkouts/${encodeURIComponent(id)}/cancel`, { method: "POST" }); },
     saveReview(gameId, rating, content) {
       return mutation(`/games/${encodeURIComponent(gameId)}/review`, {
         method: "PUT",
@@ -125,6 +138,21 @@ export function createHttpCommerceService({
       return mutation(`/reviews/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
+    },
+    createCollection(name) {
+      return mutation('/library/collections', { method: 'POST', body: { name } });
+    },
+    renameCollection(id, name) {
+      return mutation(`/library/collections/${encodeURIComponent(id)}`, { method: 'PUT', body: { name } });
+    },
+    deleteCollection(id) {
+      return mutation(`/library/collections/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+    collectionGame(collectionId, gameId, add) {
+      return mutation(`/library/collections/${encodeURIComponent(collectionId)}/games/${encodeURIComponent(gameId)}`, { method: add ? 'PUT' : 'DELETE' });
+    },
+    saveLibraryPreference(gameId, note, hidden) {
+      return mutation(`/library/games/${encodeURIComponent(gameId)}`, { method: 'PUT', body: { note, hidden } });
     },
     addWishlist(gameId) {
       return mutation(`/wishlist/${encodeURIComponent(gameId)}`, {
@@ -154,6 +182,12 @@ export function createHttpCommerceService({
       if (from) query.set("from", from);
       if (to) query.set("to", to);
       return request(`/revenue?${query}`);
+    },
+    publicationFees({ from = "", to = "" } = {}) {
+      const query = new URLSearchParams();
+      if (from) query.set("from", from);
+      if (to) query.set("to", to);
+      return request(`/revenue/fees?${query}`);
     },
     reset() {
       return Promise.reject(

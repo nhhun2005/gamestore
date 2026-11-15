@@ -32,6 +32,9 @@ test("real QR decodes to a code; only the correct entered code credits the demo 
   await page.getByRole("button", { name: "Xác nhận nạp", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /350.000/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /Đã nạp.*thành công/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /Đã nạp.*thành công/ })).toHaveCount(0, { timeout: 7000 });
+  await expect(page.getByText(/Mô phỏng —|Thử Demo khi backend/)).toHaveCount(0);
   await page.goto("/transactions");
   await expect(page.getByRole("row").filter({ has: page.getByRole("cell", { name: "Nạp tiền IN", exact: true }) })).toHaveCount(1);
 });
