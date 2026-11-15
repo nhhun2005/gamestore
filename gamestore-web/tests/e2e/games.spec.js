@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { mockStore } from "./store-fixture.js";
 
 function identity(role) {
   const id =
@@ -42,6 +43,7 @@ async function setup(page, initialRole = "DEVELOPER") {
     );
     return identity(claims.role).user;
   }
+  await mockStore(page, state, current);
   await page.route("**/api/commerce/state", (route) =>
     route.fulfill({
       json: {

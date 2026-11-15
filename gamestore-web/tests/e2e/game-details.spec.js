@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { statSync } from "node:fs";
+import { mockStore } from "./store-fixture.js";
 
 async function setup(page) {
   const user = { id: "11111111-1111-4111-8111-111111111111", username: "Người chơi", role: "USER", status: "VERIFIED", balance: "1000000.00" };
@@ -17,6 +18,7 @@ async function setup(page) {
   const calls = { purchases: [], wishlist: [], failWishlist: false, failPurchase: false };
   const token = `e30.${Buffer.from(JSON.stringify({ id: user.id, sub: user.username, role: user.role, exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url")}.test`;
   await page.addInitScript((value) => localStorage.setItem("steam_jwt_token", value), token);
+  await mockStore(page, state, user);
   await page.route("**/api/commerce/**", async (route) => {
     const request = route.request(), path = new URL(request.url()).pathname.replace("/api/commerce", "");
     if (path === "/state") return route.fulfill({ json: state });

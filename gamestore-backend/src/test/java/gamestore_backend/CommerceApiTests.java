@@ -26,6 +26,7 @@ class CommerceApiTests {
     @Value("${local.server.port}") int port;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder passwords;
     private final ObjectMapper json = new ObjectMapper();
     private final HttpClient http = HttpClient.newHttpClient();
     record Login(UUID id, String token, String username) {}
@@ -50,13 +51,10 @@ class CommerceApiTests {
     }
     Login account(String role) throws Exception {
         String username = "api-" + UUID.randomUUID();
-        HttpResponse<String> response = send("POST", "/api/auth/register", null,
-            "{\"username\":\"" + username + "\",\"email\":\"" + username + "@example.test\",\"password\":\"test-password\"}", null);
-        assertEquals(201, response.statusCode(), response.body());
-        JsonNode data = json.readTree(response.body());
-        UUID id = UUID.fromString(data.path("id").asText());
-        jdbc.update("UPDATE users SET role=? WHERE id=?", role, id);
-        response = send("POST", "/api/auth/login", null, "{\"account\":\"" + username + "\",\"password\":\"test-password\"}", null);
+        // Commerce fixtures bypass email delivery; registration now creates PENDING accounts.
+        UUID id = jdbc.queryForObject("INSERT INTO users(username,email,password,role,status) VALUES (?,?,?,?,'VERIFIED') RETURNING id",
+            UUID.class, username, username + "@example.test", passwords.encode("test-password"), role);
+        HttpResponse<String> response = send("POST", "/api/auth/login", null, "{\"account\":\"" + username + "\",\"password\":\"test-password\"}", null);
         assertEquals(200, response.statusCode(), response.body());
         return new Login(id, json.readTree(response.body()).path("token").asText(), username);
     }

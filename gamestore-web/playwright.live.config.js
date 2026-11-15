@@ -14,6 +14,7 @@ export default defineConfig({
     command: "npm run dev -- --host 127.0.0.1 --port 5180",
     url: "http://127.0.0.1:5180",
     env: { VITE_API_BASE_URL: "http://127.0.0.1:18080/api" },
-    reuseExistingServer: false,
+    // Optional explicit local server for WSL environments with slow closed-port probes.
+    reuseExistingServer: process.env.COMMERCE_LIVE_REUSE_SERVER === "1",
   },
 });

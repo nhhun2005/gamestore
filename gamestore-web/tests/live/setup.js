@@ -28,19 +28,29 @@ export default async function setup() {
     );
   const password = "live-integration-test-only";
   const suffix = `${Date.now()}`;
+  function executeSql(sql) {
+    execFileSync(
+      process.env.COMMERCE_TEST_PSQL || resolve("../gamestore-backend/target/pg-runtime/pgsql/bin/psql.exe"),
+      ["-X", "-h", "127.0.0.1", "-p", "55439", "-U", "commerce_test", "-d", "commerce_live_test", "-v", "ON_ERROR_STOP=1", "-c", sql],
+      { stdio: "pipe" },
+    );
+  }
   async function account(name) {
     const username = `${name}-${suffix}`;
-    const response = await fetch(`${api}/auth/register`, {
+    const id = randomUUID();
+    // Test-only BCrypt for the fixed fixture password. Registration now needs email verification.
+    const hash = "$2a$10$S0CnXqZGRFWTUc2FXS./B.W2U8lGFRSLyjTX2qKdq4iq.fSj8mnQi";
+    executeSql(`INSERT INTO users(id,username,email,password,status) VALUES ('${id}','${username}','${username}@example.test','${hash}','VERIFIED')`);
+    const response = await fetch(`${api}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        username,
-        email: `${username}@example.test`,
+        account: username,
         password,
       }),
     });
     if (!response.ok)
-      throw Error(`Live backend registration failed (${response.status})`);
+      throw Error(`Live backend fixture login failed (${response.status})`);
     const data = await response.json();
     if (!/^[0-9a-f-]{36}$/.test(data.id))
       throw Error("Expected a UUID from the test backend");
@@ -50,6 +60,7 @@ export default async function setup() {
   const developer = await account("live-developer");
   const other = await account("live-other");
   const admin = await account("live-admin");
+  const applicant = await account("live-applicant");
   const garden = { id: randomUUID(), title: `Live Garden ${suffix}` };
   const adventure = { id: randomUUID(), title: `Live Adventure ${suffix}` };
   const promo = randomUUID();
@@ -62,29 +73,10 @@ export default async function setup() {
       ('${adventure.id}','${other.id}','${adventure.title}','Another developer real test game',100000,'AVAILABLE',NULL,NULL);
     INSERT INTO game_submissions(game_id,submitted_by) VALUES ('${garden.id}','${developer.id}'),('${adventure.id}','${other.id}');
     COMMIT;`;
-  execFileSync(
-    process.env.COMMERCE_TEST_PSQL ||
-      resolve("../gamestore-backend/target/pg-runtime/pgsql/bin/psql.exe"),
-    [
-      "-X",
-      "-h",
-      "127.0.0.1",
-      "-p",
-      "55439",
-      "-U",
-      "commerce_test",
-      "-d",
-      "commerce_live_test",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-c",
-      sql,
-    ],
-    { stdio: "pipe" },
-  );
+  executeSql(sql);
   mkdirSync("output", { recursive: true });
   writeFileSync(
     "output/live-fixture.json",
-    JSON.stringify({ api, buyer, developer, admin, garden, adventure }),
+    JSON.stringify({ api, buyer, developer, admin, applicant, garden, adventure }),
   );
 }

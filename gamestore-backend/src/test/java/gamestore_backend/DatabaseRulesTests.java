@@ -123,8 +123,8 @@ class DatabaseRulesTests {
     @Test void newGameIsHiddenAndNotificationIsUnread() {
         assertEquals("HIDDEN", jdbc.queryForObject("SELECT status FROM games WHERE id=?", String.class, game));
         UUID promo = jdbc.queryForObject("INSERT INTO promotions(name,discount) VALUES ('Test',20) RETURNING id", UUID.class);
-        jdbc.update("INSERT INTO notifications(user_id,promotion_id,title,content) VALUES (?,?,'Sale','Test')", user, promo);
-        assertEquals(false, jdbc.queryForObject("SELECT is_read FROM notifications WHERE user_id=?", Boolean.class, user));
+        jdbc.update("INSERT INTO notifications(user_id,promotion_id,title,message) VALUES (?,?,'Sale','Test')", user, promo);
+        assertEquals(true, jdbc.queryForObject("SELECT read_at IS NULL FROM notifications WHERE user_id=?", Boolean.class, user));
     }
 
     @Test void rejectsDiscountOver100() {

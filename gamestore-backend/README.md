@@ -1,5 +1,14 @@
 # GameStore backend
 
+## Database objects for Huan's features
+
+Genre/catalog/developer writes now call PostgreSQL procedures; their reads and the
+new `/api/store/games` search/detail endpoints use views. V9 adds 10 views,
+13 procedures, 2 triggers and 6 internal functions; V10 adds 5 approved query
+indexes. Apply pending migrations only to an approved database target.
+See the [complete per-feature report](../docs/huan-db-report.md) and
+[full SQL reference](../docs/sql/huan-db-objects.sql).
+
 Java 21, Spring Boot, PostgreSQL, Flyway and JWT. Commerce APIs implement UC05,
 UC06, UC14–16 and UC20–21 alongside the existing Login/Register endpoints.
 

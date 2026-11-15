@@ -10,6 +10,7 @@ async function setup(page, role = "USER") {
     const request = route.request(), url = new URL(request.url()), path = url.pathname;
     if (path === "/api/commerce/state") return route.fulfill({ json: { current_user: state.account, users: [], games: [], promotions: [], transactions: [], game_bought: [], reviews: [], wishlist: [], capabilities: {} } });
     if (path === "/api/commerce/notifications") return route.fulfill({ json: { items: [], unread_count: 0 } });
+    if (path === "/api/store/games") return route.fulfill({ json: { items: [], promotions: [], total: 0, page: 0, size: 20 } });
     if (!path.startsWith("/api/developer/")) return route.fulfill({ status: 404, json: { message: "Không tìm thấy." } });
     if (request.method() === "GET") {
       state.reads.push(url.search);
@@ -114,8 +115,10 @@ test("user cannot access admin review and demo never calls developer APIs", asyn
   await expect(page.getByRole("heading", { name: "Không có quyền truy cập" })).toBeVisible();
   expect(state.reads).toHaveLength(0);
   await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
-  // setup's token initializer is only needed for this initial authenticated context.
-  await page.getByRole("link", { name: /Thử Demo/ }).click();
+  // The login page no longer links to the developer-only demo route.
+  // Clear setup's token on the new document rather than signing back into its fixture.
+  await page.addInitScript(() => localStorage.removeItem("steam_jwt_token"));
+  await page.goto("/demo");
   await page.getByRole("button", { name: /Huỳnh/ }).click();
   await page.getByRole("link", { name: "Đăng ký nhà phát triển", exact: true }).click();
   await expect(page.getByText(/Chế độ Demo không hỗ trợ đăng ký/)).toBeVisible();

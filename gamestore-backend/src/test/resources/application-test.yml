@@ -1,4 +1,11 @@
 spring:
+  mail:
+    host: 127.0.0.1 # Creates the mail bean; DB tests never send real mail.
+    username: test@example.test
+    properties:
+      mail.smtp.connectiontimeout: 2000
+      mail.smtp.timeout: 2000
+      mail.smtp.writetimeout: 2000
   datasource:
     url: ${TEST_DB_URL:jdbc:postgresql://127.0.0.1:55439/commerce_test}
     username: ${TEST_DB_USERNAME:commerce_test}

@@ -5,6 +5,7 @@ async function setup(page, role = "ADMINISTRATOR") {
   const claims = { id: user.id, sub: user.username, role, exp: Math.floor(Date.now() / 1000) + 3600 };
   const token = `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.test`;
   await page.addInitScript(value => localStorage.setItem("steam_jwt_token", value), token);
+  await page.route("**/api/store/games?**", route => route.fulfill({ json: { items: [], promotions: [], total: 0, page: 0, size: 20 } }));
   let genres = [{ id: "action", name: "Hành động", description: "Nhanh và mạnh", game_count: 1 }, { id: "rpg", name: "Nhập vai", description: "", game_count: 1 }];
   const games = [{ id: "game", title: "Trò chơi thử nghiệm", status: "HIDDEN", genre_ids: ["action", "rpg"] }];
   let sequence = 0;

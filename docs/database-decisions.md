@@ -1,5 +1,15 @@
 # Quy ước database GameStore
 
+## Chuyển đổi phần của Huân — 15/11/2026
+
+V9/V10 đã được duyệt riêng và áp dụng vào DB ứng dụng: 10 view, 13 stored
+procedure thực sự, 2 trigger mới, 6 function hỗ trợ và 5 index B-tree không UNIQUE.
+Các luồng ghi genre/catalog/đơn developer dùng CALL; đọc qua view, gồm API store
+tìm kiếm/chi tiết mới. Không thay bảng/cột/FK hoặc reset/backfill dữ liệu.
+Xem [báo cáo theo từng chức năng và kết quả kiểm chứng](huan-db-report.md) cùng
+[SQL đầy đủ](sql/huan-db-objects.sql). Các phần bên dưới mô tả lịch sử thiết kế V1–V7;
+những chỗ nói Java tự vô hiệu duyệt đã được thay bằng trigger trong đợt V9.
+
 Tài liệu mô tả source hiện tại và schema sau khi áp dụng migration V1–V7. Xem [sơ đồ Class Diagram và UCD](diagrams/Diagrams.drawio).
 
 ## Kiểu dữ liệu và cấu hình

@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useCommerce } from "../../components/commerce/context";
+import { CommerceContext, useCommerce } from "../../components/commerce/context";
 import { PriceDisplay } from "../../components/commerce/CommerceUI";
 import { cents, priceOf } from "../../services/currency";
 import { downloadGame } from "../../services/gameDownload.js";
 import CheckoutDialog from "../Checkout/CheckoutDialog";
 import ReviewDialog from "../Reviews/ReviewDialog";
+import { storeApi } from "../../services/storeApi.js";
 import "./GameDetailsPage.css";
 
 function GameDetailsInner({ gameId }) {
-  const { state, user, service } = useCommerce();
+  const context = useCommerce();
+  const { state: commerceState, user, service } = context;
+  const real = user?.source !== "demo";
+  const [remote, setRemote] = useState({ loading: true, data: null, error: "", status: null });
+  const [retry, setRetry] = useState(0);
+  const detail = remote.data;
+  const state = !real ? commerceState : {
+    ...commerceState,
+    games: detail?.game ? [detail.game] : [],
+    promotions: detail?.promotions || [],
+    reviews: detail?.reviews || [],
+    users: [...(commerceState?.users || []), ...(detail?.reviews || []).map((review) => ({ id: review.user_id, username: review.username }))],
+    game_bought: detail?.owned ? [{ game_id: gameId, user_id: user?.id }] : [],
+  };
   const game = (state?.games ?? []).find((g) => g.id === gameId);
 
   const [showCheckout, setShowCheckout] = useState(false);
@@ -21,6 +35,17 @@ function GameDetailsInner({ gameId }) {
   const [capsuleImgFailed, setCapsuleImgFailed] = useState(false);
 
   const wishlistMutationRef = useRef(false);
+
+  useEffect(() => {
+    if (!real) return;
+    let active = true;
+    const controller = new AbortController();
+    storeApi.detail(gameId, { signal: controller.signal }).then(
+      (data) => { if (active) setRemote({ loading: false, data, error: "", status: null }); },
+      (error) => { if (active && error.name !== "AbortError") setRemote({ loading: false, data: null, error: error.message, status: error.status }); },
+    );
+    return () => { active = false; controller.abort(); };
+  }, [real, user?.id, gameId, commerceState, retry]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -38,6 +63,8 @@ function GameDetailsInner({ gameId }) {
     };
   }, [game?.title]);
 
+  if (real && remote.loading) return <main className="game-details-page"><p role="status">Đang tải trò chơi…</p></main>;
+  if (real && remote.error && remote.status !== 404) return <main className="game-details-page"><p role="alert">{remote.error}</p><button className="commerce-button" onClick={() => setRetry((value) => value + 1)}>Thử lại</button></main>;
   if (!game) {
     return (
       <main className="game-details-page">
@@ -75,7 +102,7 @@ function GameDetailsInner({ gameId }) {
   const developer = (state?.users ?? []).find(
     (u) => u.id === game.developer_id,
   );
-  const developerName = developer?.username || "Không xác định";
+  const developerName = game.developer_name || developer?.username || "Không xác định";
 
   const reviews = (state?.reviews ?? []).filter((r) => r.game_id === game.id);
   const userReview = user?.id
@@ -395,7 +422,7 @@ function GameDetailsInner({ gameId }) {
                     const author = (state?.users ?? []).find(
                       (u) => u.id === r.user_id,
                     );
-                    const authorName = author?.username || "Người chơi";
+                    const authorName = r.username || author?.username || "Người chơi";
                     return (
                       <article key={r.id} className="game-details-review-card">
                         <div className="game-details-review-header">
@@ -493,7 +520,9 @@ function GameDetailsInner({ gameId }) {
       </div>
 
       {showCheckout && (
+        <CommerceContext.Provider value={{ ...context, state }}>
         <CheckoutDialog game={game} close={() => setShowCheckout(false)} />
+        </CommerceContext.Provider>
       )}
 
       {reviewDialogMode && (

@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { mockStore } from "./store-fixture.js";
 import { createCommerceService } from "../../src/services/commerceService.js";
 import { confirmTopUpQr } from "../helpers/topup.js";
 
 const pixel = "Pixel Valley Farming";
+test.beforeEach(async ({ page }) => {
+  await page.route("https://cdn.akamai.steamstatic.com/**", (route) => route.abort());
+});
 async function demo(page, name = "Huỳnh") {
   await page.goto("/demo");
   await page.getByRole("button", { name: new RegExp(name) }).click();
@@ -38,9 +42,7 @@ test("all seven use cases: consistent wallet, library, reviews, history and scop
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await expect(page).toHaveURL(/login/);
-  await page
-    .getByRole("link", { name: "Thử Demo khi backend chưa sẵn sàng →" })
-    .click();
+  await page.goto("/demo");
   await page.getByRole("button", { name: /Huỳnh/ }).click();
   await page.waitForFunction(() =>
     [...document.images].every((img) => img.complete),
@@ -228,6 +230,7 @@ async function interceptAuth(page, data, status = 200, topups = true) {
     delay: 0,
   });
   await commerce.prepareAccount();
+  await mockStore(page, () => commerce.snapshot(), data);
   await page.route("http://localhost:8080/api/commerce/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     try {
@@ -325,6 +328,10 @@ test("existing registration, role navigation, expired and invalid login response
   await page.getByPlaceholder("Tối thiểu 6 ký tự").fill("password123");
   await page.getByPlaceholder("Nhập lại mật khẩu").fill("password123");
   await page.getByRole("button", { name: "Hoàn tất đăng ký" }).click();
+  await expect(page.getByRole("heading", { name: "Kiểm tra email của bạn" })).toBeVisible();
+  await expect(page).toHaveURL(/register/);
+  await page.getByText("Quay lại đăng nhập", { exact: true }).click();
+  await login(page);
   await expect(page).toHaveURL(/store/);
   await page.getByRole("link", { name: "Quản lý người dùng" }).click();
   await expect(
