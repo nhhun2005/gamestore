@@ -14,7 +14,7 @@ public final class CommerceDtos {
                        String cover_image_url, String status, UUID promotion_id, BigDecimal rating, String genre) {}
     public record Promotion(UUID id, String name, String discount, String status) {}
     public record Transaction(UUID id, UUID user_id, UUID game_id, String type, String amount,
-                              String status, String created_at, UUID idempotency_key) {}
+                              String status, String created_at, UUID idempotency_key, UUID source_purchase_id, String income_kind) {}
     public record Ownership(UUID user_id, UUID game_id, UUID transaction_id) {}
     public record LibraryCollection(UUID id, String name) {}
     public record LibraryMembership(UUID collection_id, UUID game_id) {}

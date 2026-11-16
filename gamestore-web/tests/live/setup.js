@@ -72,6 +72,7 @@ export default async function setup() {
   const adventure = { id: randomUUID(), title: `Live Adventure ${suffix}` };
   const promo = randomUUID();
   const fixtureSql = `BEGIN;
+    INSERT INTO users(username,email,password,role,status) VALUES ('devgamestore','platform@commerce.example.test','unused','ADMINISTRATOR','VERIFIED') ON CONFLICT DO NOTHING;
     UPDATE users SET role='DEVELOPER' WHERE id IN ('${developer.id}','${other.id}','${payDeveloper.id}');
     UPDATE users SET role='ADMINISTRATOR' WHERE id='${admin.id}';
     INSERT INTO promotions(id,name,discount,status) VALUES ('${promo}','Live test discount',25,'ENABLED');

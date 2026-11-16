@@ -301,4 +301,51 @@ class CommerceApiTests {
         jdbc.update("UPDATE users SET role='USER' WHERE id=?",developer.id());
         assertEquals(403,send("POST","/api/commerce/wallet/withdrawals",developer,"{\"amount\":100}",UUID.randomUUID()).statusCode());
     }
+
+    BigDecimal balance(UUID id) { return jdbc.queryForObject("SELECT balance FROM users WHERE id=?",BigDecimal.class,id); }
+    @Test void walletSaleCreditsDeveloperAndPlatformOnceAndAllowsWithdrawal() throws Exception {
+        UUID platform=jdbc.queryForObject("SELECT id FROM users WHERE username='devgamestore'",UUID.class);
+        BigDecimal before=balance(platform);
+        fund(); UUID key=UUID.randomUUID();
+        JsonNode purchase=tree(send("POST","/api/commerce/purchases",buyer,buy(game),key),201);
+        tree(send("POST","/api/commerce/purchases",buyer,buy(game),key),201);
+        assertEquals(0,new BigDecimal("157500").compareTo(balance(developer.id())));
+        assertEquals(0,before.add(new BigDecimal("17500")).compareTo(balance(platform)));
+        UUID source=UUID.fromString(purchase.path("id").asText());
+        assertEquals(2,jdbc.queryForObject("SELECT count(*) FROM transactions WHERE source_purchase_id=?",Integer.class,source));
+        JsonNode history=tree(send("GET","/api/commerce/transactions",developer,null,null),200);
+        assertEquals("DEVELOPER",history.path("items").get(0).path("income_kind").asText());
+        JsonNode payout=withdrawal(developer,"157500",UUID.randomUUID());
+        tree(send("POST","/api/commerce/checkouts/"+payout.path("id").asText()+"/confirm",developer,withdrawalConfirm("9704000001"),null),200);
+        assertEquals(0,BigDecimal.ZERO.compareTo(balance(developer.id())));
+    }
+    @Test void hostedCheckoutCreditsAdminOwnerAndNotThePlatformAdmin() throws Exception {
+        UUID platform=jdbc.queryForObject("SELECT id FROM users WHERE username='devgamestore'",UUID.class);
+        BigDecimal before=balance(platform);
+        JsonNode c=tree(send("POST","/api/commerce/checkouts",buyer,json.writeValueAsString(Map.of("game_id",foreignGame,"expected_amount","50000")),UUID.randomUUID()),201);
+        String path="/api/commerce/checkouts/"+c.path("id").asText()+"/confirm";
+        String body=json.writeValueAsString(Map.of("method","CARD","bank","NCB","card_number","4242424242424242","expiry","12/35","cvv","123"));
+        tree(send("POST",path,buyer,body,null),200);tree(send("POST",path,buyer,body,null),200);
+        assertEquals(0,new BigDecimal("50000").compareTo(balance(admin.id())));
+        assertEquals(0,before.compareTo(balance(platform)));
+        assertEquals(0,new BigDecimal("100000").compareTo(balance(buyer.id())));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM transactions WHERE source_purchase_id=? AND income_kind='ADMIN_SALE'",Integer.class,UUID.fromString(c.path("transaction_id").asText())));
+    }
+    @Test void beneficiaryOverflowRollsBackPurchaseDebitOwnershipAndCredits() throws Exception {
+        jdbc.update("UPDATE users SET balance=99999999999999999.99 WHERE id=?",developer.id());fund();
+        assertEquals(409,send("POST","/api/commerce/purchases",buyer,buy(game),UUID.randomUUID()).statusCode());
+        assertEquals(0,new BigDecimal("600000").compareTo(balance(buyer.id())));
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM game_bought WHERE user_id=? AND game_id=?",Integer.class,buyer.id(),game));
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM transactions WHERE user_id=? AND type='BUY'",Integer.class,buyer.id()));
+    }
+    @Test void reciprocalDeveloperPurchasesAreSerializedAndConserveMoney() throws Exception {
+        jdbc.update("UPDATE users SET balance=100000 WHERE id IN (?,?)",developer.id(),admin.id());
+        jdbc.update("UPDATE users SET role='DEVELOPER' WHERE id=?",admin.id());
+        var a=http.sendAsync(request("POST","/api/commerce/purchases",developer,buy(foreignGame),UUID.randomUUID()),HttpResponse.BodyHandlers.ofString());
+        UUID inexpensive=game(developer.id(),"Reciprocal sale","50000","AVAILABLE",null);
+        var b=http.sendAsync(request("POST","/api/commerce/purchases",admin,buy(inexpensive),UUID.randomUUID()),HttpResponse.BodyHandlers.ofString());
+        tree(a.get(),201);tree(b.get(),201);
+        assertEquals(0,new BigDecimal("95000").compareTo(balance(developer.id())));
+        assertEquals(0,new BigDecimal("95000").compareTo(balance(admin.id())));
+    }
 }

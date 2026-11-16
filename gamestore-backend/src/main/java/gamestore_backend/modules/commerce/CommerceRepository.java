@@ -67,7 +67,7 @@ public class CommerceRepository {
         r.getString("cover_image_url"), r.getString("status"), r.getObject("promotion_id", UUID.class), r.getBigDecimal("rating"), r.getString("genre"));
     private static final RowMapper<Transaction> TRANSACTION = (r, n) -> new Transaction(r.getObject("id", UUID.class),
         r.getObject("user_id", UUID.class), r.getObject("game_id", UUID.class), r.getString("type"), amount(r.getBigDecimal("amount")),
-        r.getString("status"), r.getObject("created_at", OffsetDateTime.class).toInstant().toString(), r.getObject("idempotency_key", UUID.class));
+        r.getString("status"), r.getObject("created_at", OffsetDateTime.class).toInstant().toString(), r.getObject("idempotency_key", UUID.class), r.getObject("source_purchase_id", UUID.class), r.getString("income_kind"));
     private static final RowMapper<Review> REVIEW = (r, n) -> new Review(r.getObject("id", UUID.class),
         r.getObject("user_id", UUID.class), r.getObject("game_id", UUID.class), r.getBigDecimal("rating"), r.getString("content"));
     private static final RowMapper<WishlistEntry> WISHLIST_ENTRY = (r, n) -> {
@@ -105,6 +105,7 @@ public class CommerceRepository {
         (SELECT 1 FROM game_bought b WHERE b.game_id=g.id AND b.user_id=?))
         """;
     public Optional<Account> account(String username, boolean lock) {
+        if (lock) jdbc.query("SELECT pg_advisory_xact_lock(726491830021)", (org.springframework.jdbc.core.RowCallbackHandler) row -> {});
         return jdbc.query("SELECT id,username,email,role,status,balance FROM users WHERE lower(username)=lower(?)" +
             (lock ? " FOR UPDATE" : ""), ACCOUNT, username).stream().findFirst();
     }

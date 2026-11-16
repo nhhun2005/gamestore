@@ -126,14 +126,14 @@ export function TransactionTable({ transactions, games, checkouts = [] }) {
                 </td>
                 <td>
                   {
-                    { IN: "Nạp tiền", OUT: "Chi tiền", BUY: "Mua game" }[
+                    { IN: row.source_purchase_id ? "Doanh thu" : "Nạp tiền", OUT: "Chi tiền", BUY: "Mua game" }[
                       row.type
                     ]
                   }
                   <small>{row.type}</small>
                 </td>
                 <td>
-                  {checkout?.purpose === "TOPUP"
+                  {row.source_purchase_id ? ({ DEVELOPER: "Tiền bán game", PLATFORM_FEE: "Phí sàn bán game", ADMIN_SALE: "Tiền bán game của admin" }[row.income_kind] || "Doanh thu bán game") : checkout?.purpose === "TOPUP"
                     ? "Nạp vào ví GameStore"
                     : games.find((g) => g.id === row.game_id)?.title || "—"}
                 </td>

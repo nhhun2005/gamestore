@@ -5,3 +5,5 @@
 /gamestore-backend/README.md
 
 /third_party/fake-bank/*.md
+
+__pycache__/

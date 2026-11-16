@@ -18,6 +18,7 @@ test("free publication confirms 1.3m VND, debits once, and appears in scoped fee
     localStorage.getItem("steam_jwt_token"),
   );
   const headers = { Authorization: `Bearer ${token}` };
+  const initialWallet = await (await request.get(`${fixture.api}/commerce/wallet`, { headers })).json();
   const management = await (
     await request.get(`${fixture.api}/catalog/manage`, { headers })
   ).json();
@@ -65,7 +66,7 @@ test("free publication confirms 1.3m VND, debits once, and appears in scoped fee
   const state = await (
     await request.get(`${fixture.api}/commerce/state`, { headers })
   ).json();
-  expect(state.current_user.balance).toBe("700000.00");
+  expect(state.current_user.balance).toBe((Number(initialWallet.balance) + 700000).toFixed(2));
   expect(
     state.transactions.filter(
       (t) => t.type === "OUT" && t.amount === "1300000.00",

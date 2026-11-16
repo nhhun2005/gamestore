@@ -34,9 +34,7 @@ export default function TransactionsPage() {
   const current = Math.min(page, pages);
   return (
     <main className="steam-main-content commerce-page">
-      <PageHeader eyebrow="TÀI KHOẢN / GIAO DỊCH" title="Lịch sử giao dịch">
-        Tiền nạp và các trò chơi bạn đã mua, trong một dòng lịch sử.
-      </PageHeader>
+      <PageHeader eyebrow="TÀI KHOẢN / GIAO DỊCH" title="Lịch sử giao dịch" />
       <PendingCheckouts />
       <div className="commerce-filters">
         <label>

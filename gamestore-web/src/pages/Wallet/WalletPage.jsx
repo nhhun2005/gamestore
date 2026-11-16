@@ -117,7 +117,7 @@ export default function WalletPage() {
       <PendingCheckouts purpose="TOPUP" />
       {canWithdraw && <PendingCheckouts purpose="WITHDRAWAL" />}
       <div className="commerce-section-title">
-        <h2>Lần nạp gần đây</h2>
+        <h2>{canWithdraw ? "Tiền vào ví gần đây" : "Lần nạp gần đây"}</h2>
         <Link to="/transactions">Tất cả giao dịch →</Link>
       </div>
       <TransactionTable

@@ -68,7 +68,7 @@ class TopUpSimulationTests {
                 UUID key = inv.getArgument(2);
                 Account a = account.get();
                 account.set(new Account(user, a.username(), a.email(), a.role(), a.status(), a.balance().add(value)));
-                var row = new Transaction(UUID.randomUUID(), user, null, "IN", value.toPlainString(), "SUCCESSED", Instant.now().toString(), key);
+                var row = new Transaction(UUID.randomUUID(), user, null, "IN", value.toPlainString(), "SUCCESSED", Instant.now().toString(), key, null, null);
                 receipts.put(key, row);
                 return row;
             });
